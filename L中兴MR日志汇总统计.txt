@@ -1,0 +1,126 @@
+Option Explicit
+
+    Sub main()
+    
+            Dim thisWb As Workbook, tSh As Worksheet, qSh As Worksheet, sFolderPath As String, tlRow As Integer
+            Application.ScreenUpdating = False
+            Set thisWb = ThisWorkbook
+            Set tSh = ThisWorkbook.Sheets("日志清单")
+            Set qSh = ThisWorkbook.Sheets("全网清单")
+            
+            '选择路径
+            Dim fd As FileDialog
+            Set fd = Application.FileDialog(msoFileDialogFolderPicker)
+            If fd.Show = -1 Then
+                    sFolderPath = fd.SelectedItems(1) & "\"
+                    Set fd = Nothing
+                Else
+                    Set fd = Nothing
+                    Exit Sub
+            End If
+            
+    '        清空日志清单旧数据
+            With tSh
+                tlRow = .[A65536].End(xlUp).Row
+                If tlRow > 5 Then
+                    .Rows("6:" & tlRow).Clear
+                End If
+            End With
+    '        清空全网清旧数据
+            With qSh
+                tlRow = .[A65536].End(xlUp).Row
+                If tlRow > 1 Then
+                    .Rows("2:" & tlRow).Clear
+                End If
+            End With
+    
+             '解压所有文件
+            Call UnRarFile(sFolderPath)
+            Dim fn As String, sht As Object, lrow As Integer
+            '合并日志清单
+            fn = Dir(sFolderPath & "\*.xls")
+            Do While Len(fn) > 0
+                If fn <> thisWb.Name Then
+                    tlRow = tSh.[C65536].End(xlUp).Row + 1
+                    fn = sFolderPath & fn
+                    Workbooks.Open fn
+                    On Error Resume Next
+                    Set sht = Sheets("log") '判断工作表是否存在
+                    If Err.Number = 0 Then
+                        With sht
+                            lrow = .[C65536].End(xlUp).Row
+                            If lrow > 5 Then '防止数据为空，不为空才复制
+                                .Range("C6:I" & lrow).Copy tSh.Cells(tlRow, 1)
+                            End If
+                        End With
+                    End If
+                    ActiveWorkbook.Close
+                End If
+                fn = Dir
+            Loop
+            Set sht = Nothing
+            
+            '合并全网清单
+            Dim i As Integer
+            fn = Dir(sFolderPath & "\*.csv")
+            Do While Len(fn) > 0
+                tlRow = qSh.[C65536].End(xlUp).Row + 1
+                    fn = sFolderPath & fn
+'                    Debug.Print fn
+                    Workbooks.Open fn
+                    On Error Resume Next
+                    Set sht = Worksheets(1)
+                        With sht
+                            lrow = .[B65536].End(xlUp).Row
+'                            Debug.Print lrow
+'                            倒着删除非管理网元数据
+                            For i = lrow To 3 Step -1
+'                                Debug.Print .Cells(i, "C").Value
+                                If Trim(.Cells(i, "C").Value) <> "管理网元(MO SDR)" Then
+                                    .Cells(i, 1).EntireRow.Delete
+                                End If
+                            Next
+                            Dim lr As Integer
+                            lr = .[A65535].End(xlUp).Row - 2
+                            .[A3].Resize(lr, 2).Copy qSh.[A65536].End(xlUp).Offset(1, 0)
+                        End With
+                    ActiveWorkbook.Close False
+                fn = Dir
+            Loop
+            Set sht = Nothing
+            
+            thisWb.Sheets("统计").Activate
+            Dim week As Integer
+            lrow = [A65535].End(xlUp).Row
+            week = Split(Split(Cells(lrow, 1), "第")(1), "周")(0)
+            Cells(lrow + 1, 1).Value = Left(Cells(lrow, 1), 6) & week + 1 & "周"
+            
+            Cells(lrow + 1, 2).Value = Sheets("全网清单").[B65536].End(xlUp).Row - 1
+            Cells(lrow + 1, 3).Value = Sheets("日志清单").[E65536].End(xlUp).Row - 5
+            Cells(lrow + 1, 4).Value = Cells(lrow + 1, 2).Value - Cells(lrow + 1, 3).Value
+'            把第1列的格式刷到最后一列
+            Rows("1:1").Copy
+            Rows(lrow + 1).PasteSpecial Paste:=xlPasteFormats, Operation:=xlNone, _
+                SkipBlanks:=False, Transpose:=False
+            Application.CutCopyMode = False
+            Application.ScreenUpdating = True
+            
+            
+            
+    End Sub
+
+
+    Sub UnRarFile(myPath) '解压缩程序
+    
+        Dim Rarexe As String, myrar As String
+        Dim RAR As String
+        Dim Myadd As String
+        Dim FileString As String
+        Dim Result As Long
+        Rarexe = "C:\Program Files\Winrar\Winrar.exe" 'rar程序路径
+        myrar = myPath & "*.zip "  '需要解压缩的rar文件,用通配符可以解压所有文件
+        FileString = Rarexe & " X -o+ " & myrar & myPath 'rar程序的X命令，用来解压缩文件的字符串,-o- 跳过已存在的文件,-o+ 直接覆盖己存在文件
+        Result = Shell(FileString, vbHide) '执行解压缩
+'        Kill myrar
+
+    End Sub
