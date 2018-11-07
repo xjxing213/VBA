@@ -1,0 +1,107 @@
+        
+        '-------------------------------------------
+        '获取某文件夹下的所有文件和子目录下的文件
+        '-------------------------------------------
+        Sub Main()
+        
+        '选择路径
+        Dim fd As FileDialog
+        Set fd = Application.FileDialog(msoFileDialogFolderPicker)
+        If fd.Show = -1 Then
+                sFolderPath = fd.SelectedItems(1)
+                Set fd = Nothing
+            Else
+                Set fd = Nothing
+                Exit Sub
+        End If
+        
+        On Error Resume Next
+        Dim f As String
+        Dim file() As String
+        Dim i, k, x
+        i = 1
+        k = 1
+        
+        ReDim file(1 To i)
+        file(1) = sFolderPath & "\"
+        
+        '-- 获得所有子目录
+        Do Until i > k
+            f = Dir(file(i), vbDirectory)
+            Do Until f = ""
+                If InStr(f, ".") = 0 Then
+                    k = k + 1
+                    ReDim Preserve file(1 To k)
+                    file(k) = file(i) & f & "\"
+                End If
+                f = Dir
+            Loop
+            i = i + 1
+        Loop
+        
+        Application.ScreenUpdating = False
+        ' -- 获得所有子目录下的所有文件
+        Dim dr As String
+        dr = file(1)
+        arr = Split(dr, "\")
+        dr = arr(UBound(arr) - 1)
+        
+        Dim wb As Workbook
+        Dim path As String
+        path = ThisWorkbook.path
+        Set wb = Workbooks.Add
+        For i = 1 To 9
+        wb.Sheets.Add after:=wb.Worksheets(wb.Worksheets.Count)
+            If i <> 7 Then
+                ActiveSheet.Name = i
+            End If
+        Next
+        
+        '清除sheet类子表
+        For Each sh In wb.Worksheets    '数组
+            If IsNumeric(sh.Name) = False Then
+                Application.DisplayAlerts = False
+                sh.Delete
+                Application.DisplayAlerts = True
+            End If
+        Next
+        
+        With wb
+            Dim n%
+            Dim m%
+            n = 1
+            For i = 1 To k
+                f = Dir(file(i) & "*.*")    '通配符*.*表示所有文件，*.xlsx Excel文件
+                'i==1 k==1
+                Do Until f = ""
+                'i重复N次1
+                FullName = file(i) & f
+                    Set svr = Workbooks.Open(FullName)
+                        svr.Sheets("sheet1").Cells.Copy wb.Sheets(CStr(n)).[A1]
+                    svr.Close
+                    Set svr = Nothing
+                    f = Dir
+                    n = n + 1
+                    If n = 7 Then
+                        n = n + 1
+                    End If
+                Loop
+            Next
+
+            Dim sht As Worksheet
+            For Each sht In .Sheets
+              sht.Cells.Replace What:="--", Replacement:="", LookAt:=xlPart, SearchOrder _
+        :=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+            Next
+
+            .SaveAs path & "\" & dr & ".xlsx", FileFormat:=xlOpenXMLWorkbook
+            .Close
+            Set wb = Nothing
+
+        End With
+        
+        Application.ScreenUpdating = True
+
+        ThisWorkbook.Close
+        
+        End Sub
