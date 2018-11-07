@@ -1,0 +1,377 @@
+Private Sub Change_add_fp_Click()
+  Dim fp, arr
+  fp = TextBox_add_fp.Text
+  If fp = "" Then
+        MsgBox "请输入频点，并用英文逗号分隔开"
+    Else
+        arr = Split(fp, ",")
+            For Each sh In ActiveWorkbook.Sheets
+              If sh.Name <> "首页" Then
+                        sh.Range("L1") = arr(0)
+                        sh.Range("M1") = arr(1)
+                        sh.Range("N1") = arr(2)
+                        sh.Range("O1") = arr(3)
+              End If
+            Next sh
+        MsgBox "己更换新增异频的所有频点"
+    End If
+End Sub
+
+Private Sub Change_del_fp_Click()
+  Dim fp, arr
+  fp = TextBox_del_fp.Text
+  If fp = "" Then
+        MsgBox "请输入频点，并用英文逗号分隔开"
+    Else
+        arr = Split(fp, ",")
+            For Each sh In ActiveWorkbook.Sheets
+              If sh.Name <> "首页" Then
+                        sh.Range("P1") = arr(0)
+                        sh.Range("Q1") = arr(1)
+                        sh.Range("R1") = arr(2)
+                        sh.Range("S1") = arr(3)
+              End If
+            Next sh
+        MsgBox "己更换删除异频的所有频点"
+    End If
+End Sub
+
+
+Private Sub choose_add_Click()
+TextBox_add.Enabled = True
+TextBox_del.Enabled = False
+
+TextBox_add_fp.Enabled = True
+TextBox_del_fp.Enabled = False
+
+Change_add_fp.Enabled = True
+Change_del_fp.Enabled = False
+
+clean_add_fp.Enabled = True
+clean_del_fp.Enabled = False
+
+svr1.Caption = "生成svr1新增脚本"
+svr2.Caption = "生成svr2新增脚本"
+svr3.Caption = "生成svr3新增脚本"
+svr4.Caption = "生成svr4新增脚本"
+svr5.Caption = "生成svr5新增脚本"
+svr6.Caption = "生成svr6新增脚本"
+svr8.Caption = "生成svr8新增脚本"
+svr9.Caption = "生成svr9新增脚本"
+
+If ActiveSheet.Name = "首页" Then
+TextBox_add.Text = Range("A5").Value
+TextBox_del.Text = Range("A6").Value
+End If
+
+End Sub
+
+Private Sub choose_del_Click()
+TextBox_add.Enabled = False
+TextBox_del.Enabled = True
+
+TextBox_add_fp.Enabled = False
+TextBox_del_fp.Enabled = True
+
+Change_add_fp.Enabled = False
+Change_del_fp.Enabled = True
+
+clean_add_fp.Enabled = False
+clean_del_fp.Enabled = True
+
+svr1.Caption = "生成svr1删除脚本"
+svr2.Caption = "生成svr2删除脚本"
+svr3.Caption = "生成svr3删除脚本"
+svr4.Caption = "生成svr4删除脚本"
+svr5.Caption = "生成svr5删除脚本"
+svr6.Caption = "生成svr6删除脚本"
+svr8.Caption = "生成svr8删除脚本"
+svr9.Caption = "生成svr9删除脚本"
+
+If ActiveSheet.Name = "首页" Then
+TextBox_add.Text = Range("A5").Value
+TextBox_del.Text = Range("A6").Value
+End If
+
+End Sub
+
+
+Private Sub clean_add_fp_Click()
+TextBox_add_fp.Text = ""
+End Sub
+
+Private Sub clean_del_fp_Click()
+TextBox_del_fp.Text = ""
+End Sub
+
+
+Private Sub CommandButton1_Click()
+
+End Sub
+
+Private Sub Label6_Click()
+
+MsgBox _
+"1、“清除冗余数据”为删除DEF和HIJK列数据" & vbCrLf & _
+"2、更新异频频点需用英文逗号分隔开" & vbCrLf & _
+"3、每个生成按钮下面为该子表的小区数量" & vbCrLf & _
+"4、关闭主窗体则可显示Excel文件内容以更新小区信息" & vbCrLf & _
+"5、文件名前缀“异频脚本生成”不要改动，后面可修改" & vbCrLf & _
+"6、L网华为MML脚本限制在5M以内，有时候更小一点，所以要限制生成行数。生成行数越大，脚本文件越大"
+
+End Sub
+
+Private Sub LoseWeight_Click()
+
+Dim sh As Worksheet
+For Each sh In ActiveWorkbook.Sheets
+    sh.Range("D:F,H:K").Clear
+Next
+MsgBox "己删除DEF和HIJK列数据"
+    
+End Sub
+
+Private Sub show_add_path_Click()
+    Dim pth_add
+    pth_add = ThisWorkbook.path() & "\新增异频txt脚本" & Format(Date, "YYYYMMDD")
+    If Dir(pth_add, vbDirectory) <> "" Then
+        Shell "explorer.exe " & pth_add, vbNormalFocus
+        Else
+        MsgBox "今天未生成新增脚本"
+    End If
+End Sub
+
+Private Sub show_del_path_Click()
+    Dim pth_del
+    pth_del = ThisWorkbook.path() & "\删除异频txt脚本" & Format(Date, "YYYYMMDD")
+    If Dir(pth_del, vbDirectory) <> "" Then
+        Shell "explorer.exe " & pth_del, vbNormalFocus
+        Else
+        MsgBox "今天未生成删除脚本"
+    End If
+End Sub
+
+Private Sub ShowCellNum_Click()
+
+End Sub
+
+Private Sub svr1_Click()
+    If choose_add.Value = True Then
+    Call 生成脚本add("svr1", UserForm1.TextBox_add.Text)
+    Else
+    Call 生成脚本del("svr1", UserForm1.TextBox_del.Text)
+    End If
+End Sub
+
+Private Sub svr2_Click()
+    If choose_add.Value = True Then
+    Call 生成脚本add("svr2", UserForm1.TextBox_add.Text)
+    Else
+    Call 生成脚本del("svr2", UserForm1.TextBox_del.Text)
+    End If
+End Sub
+
+Private Sub svr3_Click()
+        If choose_add.Value = True Then
+    Call 生成脚本add("svr3", UserForm1.TextBox_add.Text)
+    Else
+    Call 生成脚本del("svr3", UserForm1.TextBox_del.Text)
+    End If
+End Sub
+
+Private Sub svr4_Click()
+    If choose_add.Value = True Then
+    Call 生成脚本add("svr4", UserForm1.TextBox_add.Text)
+    Else
+    Call 生成脚本del("svr4", UserForm1.TextBox_del.Text)
+    End If
+End Sub
+
+Private Sub svr5_Click()
+        If choose_add.Value = True Then
+    Call 生成脚本add("svr5", UserForm1.TextBox_add.Text)
+    Else
+    Call 生成脚本del("svr5", UserForm1.TextBox_del.Text)
+    End If
+End Sub
+
+Private Sub svr6_Click()
+        If choose_add.Value = True Then
+    Call 生成脚本add("svr6", UserForm1.TextBox_add.Text)
+    Else
+    Call 生成脚本del("svr6", UserForm1.TextBox_del.Text)
+    End If
+End Sub
+Private Sub svr8_Click()
+        If choose_add.Value = True Then
+    Call 生成脚本add("svr8", UserForm1.TextBox_add.Text)
+    Else
+    Call 生成脚本del("svr8", UserForm1.TextBox_del.Text)
+    End If
+End Sub
+Private Sub svr9_Click()
+        If choose_add.Value = True Then
+    Call 生成脚本add("svr9", UserForm1.TextBox_add.Text)
+    Else
+    Call 生成脚本del("svr9", UserForm1.TextBox_del.Text)
+    End If
+End Sub
+
+Sub 生成脚本add(svr, rws)
+        On Error Resume Next
+        Dim f, arr, x, nxt, n, pth, svrname, rowend
+        
+                pth = ThisWorkbook.path() & "\新增异频txt脚本" & Format(Date, "YYYYMMDD")
+                If Dir(pth, vbDirectory) = "" Then
+                    MkDir pth
+                End If
+        
+            rowend = Sheets(svr).Range("O100000").End(xlUp).Row
+            svrname = svr
+            pth2 = pth & "\" & svrname  '生成对应的svr文件夹
+            If Dir(pth2, vbDirectory) = "" Then
+                MkDir pth2
+            End If
+
+            arr = Sheets(svr).Range("L2:O" & rowend)
+            n = 1 'txt命令顺序
+            nxt = 1 '频点所在相对列
+            rn = 0 '所在行，累加的
+            
+            For nxt = 1 To 4
+                'Debug.Print UBound(arr)
+                For x = 1 To UBound(arr)
+                    rn = (nxt - 1) * UBound(arr) + x
+
+                    If rn = 1 Or rn Mod rws = 1 Then
+                        f = pth2 & "\" & svrname & "-" & n & ".txt"
+                        Open f For Append As #1
+                        n = n + 1
+                    End If
+                    
+                    Print #1, arr(x, nxt)
+                    
+                    If x = rowend - 1 Then
+                        GoTo line
+                    End If
+                    
+                    If rn Mod rws = 0 Then
+                        Close #1
+                    End If
+                    
+                Next x
+line:
+            Next nxt
+            
+            Erase arr
+        
+        Close #1
+        msb = "己生成" & svr & "新增异频脚本"
+        MsgBox msb
+        Exit Sub
+        
+End Sub
+
+Sub 生成脚本del(svr, rws)
+        On Error Resume Next
+        Dim f, arr, x, nxt, n, pth, svrname, rowend, msb
+        
+        pth = ThisWorkbook.path() & "\删除异频txt脚本" & Format(Date, "YYYYMMDD")
+        If Dir(pth, vbDirectory) = "" Then
+            MkDir pth
+        End If
+
+            rowend = Sheets(svr).Range("O100000").End(xlUp).Row
+            svrname = svr
+            pth2 = pth & "\" & svrname  '生成对应的svr文件夹
+            If Dir(pth2, vbDirectory) = "" Then
+                MkDir pth2
+            End If
+
+            arr = Sheets(svr).Range("P2:S" & rowend)
+            n = 1 'txt命令顺序
+            nxt = 1 '频点所在相对列
+            rn = 0 '所在行，累加的
+            
+            For nxt = 1 To 4
+                For x = 1 To UBound(arr)
+                    rn = (nxt - 1) * UBound(arr) + x
+
+                    If rn = 1 Or rn Mod rws = 1 Then
+                        f = pth2 & "\" & svrname & "-" & n & ".txt"
+                        Open f For Append As #1
+                        n = n + 1
+                    End If
+                    
+                    Print #1, arr(x, nxt)
+                    
+                    If x = rowend - 1 Then
+                        GoTo line
+                    End If
+                    
+                    If rn Mod rws = 0 Then
+                        Close #1
+                    End If
+                    
+                Next x
+line:
+            Next nxt
+            
+            Erase arr
+        
+        Close #1
+        msb = "己生成" & svr & "删除异频脚本"
+        MsgBox msb
+        Exit Sub
+        
+End Sub
+
+Private Sub TextBox_add_Change()
+Range("A5").Value = TextBox_add.Text
+End Sub
+
+Private Sub TextBox_del_Change()
+Range("A6").Value = TextBox_del.Text
+End Sub
+
+Private Sub UserForm_Initialize()
+
+TextBox_add_fp = Sheets("svr1").Range("L1").Value & "," & Sheets("svr1").Range("M1").Value & "," & Sheets("svr1").Range("N1").Value & "," & Sheets("svr1").Range("O1").Value
+TextBox_del_fp = Sheets("svr1").Range("P1").Value & "," & Sheets("svr1").Range("Q1").Value & "," & Sheets("svr1").Range("R1").Value & "," & Sheets("svr1").Range("S1").Value
+
+TextBox_add.Enabled = True
+TextBox_del.Enabled = False
+
+TextBox_add_fp.Enabled = True
+TextBox_del_fp.Enabled = False
+
+Change_add_fp.Enabled = True
+Change_del_fp.Enabled = False
+
+clean_add_fp.Enabled = True
+clean_del_fp.Enabled = False
+
+If ActiveSheet.Name = "首页" Then
+TextBox_add.Text = Range("A5").Value
+TextBox_del.Text = Range("A6").Value
+End If
+
+Dim s1, s2, s3, s4, s5, s6
+s1 = Sheets("svr1").Range("A200000").End(xlUp).Row - 1
+s2 = Sheets("svr2").Range("A200000").End(xlUp).Row - 1
+s3 = Sheets("svr3").Range("A200000").End(xlUp).Row - 1
+s4 = Sheets("svr4").Range("A200000").End(xlUp).Row - 1
+s5 = Sheets("svr5").Range("A200000").End(xlUp).Row - 1
+s6 = Sheets("svr6").Range("A200000").End(xlUp).Row - 1
+s8 = Sheets("svr8").Range("A200000").End(xlUp).Row - 1
+s9 = Sheets("svr9").Range("A200000").End(xlUp).Row - 1
+Svr1_Label.Caption = "(" & s1 & ")"
+Svr2_Label.Caption = "(" & s2 & ")"
+Svr3_Label.Caption = "(" & s3 & ")"
+Svr4_Label.Caption = "(" & s4 & ")"
+Svr5_Label.Caption = "(" & s5 & ")"
+Svr6_Label.Caption = "(" & s6 & ")"
+Svr8_Label.Caption = "(" & s8 & ")"
+Svr9_Label.Caption = "(" & s9 & ")"
+
+End Sub
