@@ -1,0 +1,562 @@
+
+    Sub findNotZero()
+
+    If Left(ActiveWorkbook.Name, 14) = "附件5 L网异常运维状态站点" And ActiveSheet.Name = "基站网元状态" Then
+        Dim thisWb As Workbook
+        Dim Dwb As Object, Dzw_mb As Object, Dzw_ds As Object, s As String
+        Set Dwb = CreateObject("scripting.dictionary") '导入文件名字典
+        Set Dzw_mb = CreateObject("scripting.dictionary") '子网与OMMB对应字典
+        Set Dzw_ds = CreateObject("scripting.dictionary") '子网与地市对应字典
+        
+        '子网与OMMB对应字典&子网与地市对应字典
+        With Sheets("子网列表")
+            lastRowzw = .[A65536].End(xlUp).Row
+            For j = 2 To lastRowzw
+                Dzw_mb.Add Trim(.Cells(j, 1)), .Cells(j, 3)
+                Dzw_ds.Add Trim(.Cells(j, 1)), .Cells(j, 2)
+            Next
+        End With
+        
+        Set thisWb = ThisWorkbook
+        [A1].Value = "数据取自" & Format(Date, "yyyy-mm-dd") & "专业网管"
+    
+        '选择路径
+        Dim fd As FileDialog
+        Set fd = Application.FileDialog(msoFileDialogFolderPicker)
+        If fd.Show = -1 Then
+                sFolderPath = fd.SelectedItems(1)
+                Set fd = Nothing
+            Else
+                Set fd = Nothing
+                Exit Sub
+        End If
+        
+        '清除附件5原有数据
+        er = [N65536].End(xlUp).Row
+        If er > 5 Then Rows("6:" & er).Clear
+       
+        Dim arr, tcList
+        Dim tcListPath As String
+        tcListPath = "C:\Users\admin\Desktop\【待优化】运维状态修改剔除站点清单\运维状态修改剔除站点清单.xlsx"
+        Set tcListWb = Workbooks.Open(tcListPath)
+        
+        With tcListWb
+'            把剔除清单网元ID文本转换为数值
+            .Sheets("总地市").Columns("B:B").TextToColumns Destination:=Range("B1"), DataType:=xlDelimited, _
+            TextQualifier:=xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=True, _
+            Semicolon:=False, Comma:=False, Space:=False, Other:=False, FieldInfo _
+            :=Array(1, 1), TrailingMinusNumbers:=True
+            '把剔除清单放入数组
+            arr = .Sheets("总地市").Range("B2:B" & .Sheets("总地市").[A65536].End(xlUp).Row) '二维数组
+            tcList = WorksheetFunction.Transpose(arr) '一维数组
+            .Close False
+            
+        End With
+        Set tcListWb = Nothing
+        
+        On Error Resume Next
+        Dim f As String
+        Dim file() As String
+        Dim i, k, x
+        i = 1
+        k = 1
+        
+        ReDim file(1 To i)
+        file(1) = sFolderPath & "\"
+        
+        '-- 获得所有子目录
+        Do Until i > k
+            f = Dir(file(i), vbDirectory)
+            Do Until f = ""
+                If InStr(f, ".") = 0 Then
+                    k = k + 1
+                    ReDim Preserve file(1 To k)
+                    file(k) = file(i) & f & "\"
+'                    Debug.Print file(k)
+                    Call UnRarFile(file(k))
+                End If
+                f = Dir
+            Loop
+            i = i + 1
+        Loop
+        
+        Application.ScreenUpdating = False
+        ' -- 获得所有子目录下的所有文件
+        Dim headPath As String
+        headPath = file(1)
+    
+        Dim GhWb As Workbook
+        Dim m%, nzero%, rw%, sn%
+        rw = 6 '初始位置在第6行
+        sn = 1 '初始序号为1
+        For i = 1 To k
+            f = Dir(file(i) & "*.xlsm")
+            Do Until f = ""
+                'i重复N次1
+                FullName = file(i) & f
+'                Debug.Print FullName
+                Set GhWb = Workbooks.Open(FullName)
+    '            Debug.Print wb.Name
+                With GhWb.Sheets("ManagedElement")
+                    nzero = 0
+                    .Select
+                    endRow = [AN20000].End(3).Row
+                    Dim rng As Range
+                    
+                    '    子网    无线制式    管理网元ID  网元配置数据版本    网元类型    网元名称    网元运维状态    LTE FDD运维状态 TD-LTE运维状态
+                    Dim SubNetwork%, RADIOMODE%, MEID%, SWVERSION%, METYPE%, USERLABEL%, MAINTAINSTATUS%, maintainstatusLTEFDD%, maintainstatusLTETDD%
+                    SubNetwork = Application.WorksheetFunction.Match("SubNetwork", [1:1], False)
+                    RADIOMODE = Application.WorksheetFunction.Match("RADIOMODE", [1:1], False)
+                    MEID = Application.WorksheetFunction.Match("MEID", [1:1], False)
+                    SWVERSION = Application.WorksheetFunction.Match("SWVERSION", [1:1], False)
+                    METYPE = Application.WorksheetFunction.Match("METYPE", [1:1], False)
+                    USERLABEL = Application.WorksheetFunction.Match("USERLABEL", [1:1], False)
+                    MAINTAINSTATUS = Application.WorksheetFunction.Match("MAINTAINSTATUS", [1:1], False)
+                    maintainstatusLTEFDD = Application.WorksheetFunction.Match("maintainstatusLTEFDD", [1:1], False)
+                    maintainstatusLTETDD = Application.WorksheetFunction.Match("maintainstatusLTETDD", [1:1], False)
+                    
+                    'SubNetwork=440101,MEID=479233
+                    Dim rd As String
+                    For j = 6 To endRow
+                        If Int(.Cells(j, MAINTAINSTATUS).Value) <> 0 Or Int(.Cells(j, maintainstatusLTEFDD).Value) <> 0 Or Int(.Cells(j, maintainstatusLTETDD).Value) <> 0 Then
+                            If UBound(Filter(tcList, Int(.Cells(j, MEID).Value))) <> 0 Then '如果当前数据不在剔除清单内，则存入统计表
+                                city_vl = "=VLOOKUP(F" & rw & ",子网列表!A:B,2,0)"
+                                ommb_vl = "=VLOOKUP(F" & rw & ",子网列表!A:C,3,0)"
+                                thisWb.Sheets("基站网元状态").Cells(rw, 1) = sn '序号
+                                thisWb.Sheets("基站网元状态").Cells(rw, 2).Formula = city_vl '地市
+                                thisWb.Sheets("基站网元状态").Cells(rw, 3).Formula = ommb_vl 'ommb
+                                thisWb.Sheets("基站网元状态").Cells(rw, 4) = "M" '结果
+                                thisWb.Sheets("基站网元状态").Cells(rw, 5) = "SubNetwork=" & .Cells(j, SubNetwork) & ",MEID=" & .Cells(j, MEID) 'MOI
+                                thisWb.Sheets("基站网元状态").Cells(rw, 6) = .Cells(j, SubNetwork) '子网
+                                thisWb.Sheets("基站网元状态").Cells(rw, 7) = strSum(.Cells(j, RADIOMODE)) '对无线制式进行求和
+                                thisWb.Sheets("基站网元状态").Cells(rw, 8) = .Cells(j, MEID) '
+                                thisWb.Sheets("基站网元状态").Cells(rw, 9) = .Cells(j, SWVERSION) '
+                                thisWb.Sheets("基站网元状态").Cells(rw, 10) = .Cells(j, METYPE) '
+                                thisWb.Sheets("基站网元状态").Cells(rw, 11) = .Cells(j, USERLABEL) '
+                                thisWb.Sheets("基站网元状态").Cells(rw, 12) = .Cells(j, MAINTAINSTATUS) '
+                                thisWb.Sheets("基站网元状态").Cells(rw, 13) = .Cells(j, maintainstatusLTEFDD) '
+                                thisWb.Sheets("基站网元状态").Cells(rw, 14) = .Cells(j, maintainstatusLTETDD) '
+                                nzero = 1
+                                sn = sn + 1
+                                rw = rw + 1
+                                
+                            End If
+                        End If
+                        
+                        '生成剔除导入表
+                        Dim Tcpath As String
+                        Tcpath = "剔除导入" & Format(Date, "yyyymmdd")
+                        MkDir Tcpath
+                        If UBound(Filter(tcList, Int(.Cells(j, MEID).Value))) = 0 Then
+                            subval = .Cells(j, SubNetwork).Value
+                            If Dzw_ds(subval) = "清远" Then
+                                s = "剔qy" & Dzw_mb(subval) & "_" & .Cells(j, SWVERSION) & ".xls"
+                            Else
+                                s = "剔" & Dzw_mb(subval) & "_" & .Cells(j, SWVERSION) & ".xls"
+                            End If
+                            If Not Dwb.Exists(s) Then
+                                Dwb.Add s, ""
+                                Dim TcWb As Workbook
+                                Set TcWb = Workbooks.Add
+                                TcWb.ActiveSheet.Columns("A:C").NumberFormatLocal = "@"
+                                TcWb.ActiveSheet.[A1] = "选中状态 (Y/N)"
+                                TcWb.ActiveSheet.[B1] = "子网ID"
+                                TcWb.ActiveSheet.[C1] = "网元ID"
+                                TcWb.SaveAs Tcpath & "\" & s, FileFormat:=xlExcel8
+                                Set TcWb = Nothing
+                            End If
+                            lastRow2 = Workbooks(s).ActiveSheet.[A65536].End(xlUp).Row + 1
+                            Workbooks(s).ActiveSheet.Cells(lastRow2, 1) = "Y"
+                            Workbooks(s).ActiveSheet.Cells(lastRow2, 2) = Trim(.Cells(j, SubNetwork))
+                            Workbooks(s).ActiveSheet.Cells(lastRow2, 3) = Trim(.Cells(j, MEID))
+                        End If
+                    Next
+                    End With
+                    
+                    GhWb.Close '关闭规划表
+
+                    If nzero = 0 Then
+                        Kill FullName '如果全部为0，则删除此文件
+                    End If
+                
+                f = Dir
+            Loop
+
+            For Each Key In Dwb
+               Workbooks(Key).Save
+               Workbooks(Key).Close
+            Next
+'            遍历一个OMMB文件夹结束后清空字典
+            Dwb.RemoveAll
+            
+         Next
+'        Set TcWb = Nothing '释放导入文件对象
+         '--------------------------------------打上边框--------------------------------------------
+'         Debug.Print thisWb.Name
+        thisWb.Sheets("基站网元状态").Activate
+          Range("A6:N" & Range("N10000").End(xlUp).Row).Select
+            Selection.Borders(xlDiagonalDown).LineStyle = xlNone
+            Selection.Borders(xlDiagonalUp).LineStyle = xlNone
+            With Selection.Borders(xlEdgeLeft)
+                .LineStyle = xlContinuous
+                .ColorIndex = 0
+                .TintAndShade = 0
+                .Weight = xlThin
+            End With
+            With Selection.Borders(xlEdgeTop)
+                .LineStyle = xlContinuous
+                .ColorIndex = 0
+                .TintAndShade = 0
+                .Weight = xlThin
+            End With
+            With Selection.Borders(xlEdgeBottom)
+                .LineStyle = xlContinuous
+                .ColorIndex = 0
+                .TintAndShade = 0
+                .Weight = xlThin
+            End With
+            With Selection.Borders(xlEdgeRight)
+                .LineStyle = xlContinuous
+                .ColorIndex = 0
+                .TintAndShade = 0
+                .Weight = xlThin
+            End With
+            With Selection.Borders(xlInsideVertical)
+                .LineStyle = xlContinuous
+                .ColorIndex = 0
+                .TintAndShade = 0
+                .Weight = xlThin
+            End With
+            With Selection.Borders(xlInsideHorizontal)
+                .LineStyle = xlContinuous
+                .ColorIndex = 0
+                .TintAndShade = 0
+                .Weight = xlThin
+            End With
+         '--------------------------------------居中--------------------------------------------
+           With Selection
+                .HorizontalAlignment = xlGeneral
+                .VerticalAlignment = xlCenter
+                .WrapText = False
+                .Orientation = 0
+                .AddIndent = False
+                .IndentLevel = 0
+                .ShrinkToFit = False
+                .ReadingOrder = xlContext
+                .MergeCells = False
+            End With
+            With Selection
+                .HorizontalAlignment = xlCenter
+                .VerticalAlignment = xlCenter
+                .WrapText = False
+                .Orientation = 0
+                .AddIndent = False
+                .IndentLevel = 0
+                .ShrinkToFit = False
+                .ReadingOrder = xlContext
+                .MergeCells = False
+            End With
+        '--------------------------------------序号和地市分别合并单元格--------------------------------------------
+            Range("A2:A5").Select
+            With Selection
+                .HorizontalAlignment = xlCenter
+                .VerticalAlignment = xlCenter
+                .WrapText = False
+                .Orientation = 0
+                .AddIndent = False
+                .IndentLevel = 0
+                .ShrinkToFit = False
+                .ReadingOrder = xlContext
+                .MergeCells = False
+            End With
+            Selection.Merge
+
+            Range("B2:B5").Select
+            With Selection
+                .HorizontalAlignment = xlCenter
+                .VerticalAlignment = xlCenter
+                .WrapText = False
+                .Orientation = 0
+                .AddIndent = False
+                .IndentLevel = 0
+                .ShrinkToFit = False
+                .ReadingOrder = xlContext
+                .MergeCells = False
+            End With
+            Selection.Merge
+       
+       
+        Application.ScreenUpdating = True
+        thisWb.Save
+        Call crImport
+        Call crPivotTable
+        Set Dzw = Nothing
+    Else
+        MsgBox "需打开“附件5 L网异常运维状态站点.xlsx”文件并切换到“基站网元状态子表”"
+
+    End If
+    
+
+    
+    
+    End Sub
+        
+        
+    Sub UnRarFile(myPath) '解压缩程序
+    
+        Dim Rarexe As String
+        Dim RAR As String
+        Dim Myadd As String
+        Dim FileString As String
+        Dim Result As Long
+        Rarexe = "C:\Program Files\Winrar\Winrar.exe" 'rar程序路径
+        myrar = myPath & "*.zip "  '需要解压缩的rar文件,用通配符可以解压所有文件
+'        Debug.Print myrar
+        FileString = Rarexe & " X -o+ " & myrar & myPath 'rar程序的X命令，用来解压缩文件的字符串,-o- 跳过已存在的文件,-o+ 直接覆盖己存在文件
+'        Debug.Print FileString
+        Result = Shell(FileString, vbHide) '执行解压缩
+'        Kill myrar
+        
+    End Sub
+    
+     Sub crPivotTable()
+
+'    If ActiveSheet.Name = "统计" And Range("A1").Value = "L网异常运维状态站点数量" Then
+        Sheets("统计").Select
+        Range("A4:G2000").Clear
+        
+        If Sheets("基站网元状态").Range("A6").Value <> "无" Then
+        Sheets("基站网元状态").Range("B6:B" & Sheets("基站网元状态").Range("B2000").End(xlUp).Row).Copy
+        Range("A4").Select
+        Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+        End If
+        
+        If Sheets("小区调测状态（FDD）").Range("A6").Value <> "无" Then
+        Sheets("小区调测状态（FDD）").Range("B6:B" & Sheets("小区调测状态（FDD）").Range("B2000").End(xlUp).Row).Copy
+        Range("A" & Range("A1000").End(xlUp).Row + 1).Select
+        Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+        End If
+    
+        If Sheets("小区调测状态（TDD）").Range("A6").Value <> "无" Then
+        Sheets("小区调测状态（TDD）").Range("B6:B" & Sheets("小区调测状态（TDD）").Range("B2000").End(xlUp).Row).Copy
+        Range("A" & Range("A1000").End(xlUp).Row + 1).Select
+        Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+        End If
+        ActiveSheet.Range("$A$4:$A$10000").RemoveDuplicates Columns:=1, Header:=xlNo '地市去重
+        Range("A4").Activate
+        
+        Range("B4:F" & Range("A30").End(xlUp).Row).Value = 0 '全部赋值0
+        
+        Dim rg As Range
+        Dim arr, arrSum
+        Dim RowNum, ColumnNum, sum, CityRowNum, CityColumnNum, n2
+        Dim arrSumNum As Integer
+'        sum = 0
+        CityRowNum = 0
+        CityColumnNum = 1
+        
+        arrSum = Range("A4:F" & Range("A30").End(xlUp).Row)
+    '--------------------------------得到基站网元状态统计数据----------------------------
+        arr = Sheets("基站网元状态").Range("B6:N" & Sheets("基站网元状态").Range("N10000").End(xlUp).Row)
+        For ColumnNum = 11 To 13 '基站网元状态子表三个状态
+            For RowNum = 1 To UBound(arr) '基站网元状态子表内容所占行数
+                If Int(arr(RowNum, ColumnNum)) > 0 Then
+                    For arrSumNum = 1 To UBound(arrSum) '地市遍历
+                        If arrSum(arrSumNum, 1) = arr(RowNum, 1) Then '如果统计地市与网元状态地市一致，则+1
+                            arrSum(arrSumNum, ColumnNum - 9) = arrSum(arrSumNum, ColumnNum - 9) + 1 '如果对应的运维状态不为0，则加1
+                            Exit For
+                        End If
+                    Next arrSumNum
+                End If
+            Next RowNum
+        Next ColumnNum
+    '-----------------------------------小区调测状态（FDD）----------------------------
+        If Sheets("小区调测状态（FDD）").Range("A6").Value <> "无" Then
+        Erase arr
+        arr = Sheets("小区调测状态（FDD）").Range("B6:BE" & Sheets("小区调测状态（FDD）").Range("BE10000").End(xlUp).Row)
+            For RowNum = 1 To UBound(arr)
+                For arrSumNum = 1 To UBound(arrSum) '统计中地市遍历，开始计数
+                    If arrSum(arrSumNum, 1) = arr(RowNum, 1) Then
+                        arrSum(arrSumNum, 5) = arrSum(arrSumNum, 5) + 1 '如果对应的测试状态不为0，则加1
+                        Exit For
+                    End If
+                Next arrSumNum
+            Next RowNum
+        End If
+    '-----------------------------------小区调测状态（TDD）----------------------------
+        If Sheets("小区调测状态（TDD）").Range("A6").Value <> "无" Then
+        Erase arr
+        arr = Sheets("小区调测状态（TDD）").Range("B6:B" & Sheets("小区调测状态（TDD）").Range("B10000").End(xlUp).Row)
+            For RowNum = 1 To UBound(arr)
+                For arrSumNum = 1 To UBound(arrSum) '统计中地市遍历，开始计数
+                    If arrSum(arrSumNum, 1) = arr(RowNum, 1) Then
+                        arrSum(arrSumNum, 6) = arrSum(arrSumNum, 6) + 1 '如果对应的测试状态不为0，则加1
+                        Exit For
+                    End If
+                Next arrSumNum
+            Next RowNum
+        End If
+    '--------------------------------添加合计，求和公式---------------------------
+    Range("A4:F" & Range("A30").End(xlUp).Row) = arrSum '把数组赋值给单元格
+    Range("A2") = "【总结】本周共" & Application.CountA(Range("A4:A50")) & "地市将L网中兴“开通”运维状态擅自修改为“调测”)"
+     Dim str As String
+     Range("A" & Range("A30").End(xlUp).Row + 1).Value = "合计"
+     str = "=sum(B4:" & Range("B" & Range("B30").End(xlUp).Row).Address(0, 0) & ")"
+     Range("B" & Range("B30").End(xlUp).Row + 1).Value = str
+     Range("B" & Range("B30").End(xlUp).Row).Resize(1, 5).FillRight '合计行求和
+     
+     Range("G4").Value = "=SUM(B4:F4)"
+     Range("G4:G" & Range("A30").End(xlUp).Row).FillDown '合计列求和
+     
+      '--------------------------------------格式化--------------------------------------------
+        Rows("4:4").Select
+        Range(Selection, Selection.End(xlDown)).Select
+        Selection.RowHeight = 19.5
+        
+        Rows("3:3").Select
+        Selection.Copy
+        Rows(Range("A30").End(xlUp).Row).Select
+        Selection.PasteSpecial Paste:=xlPasteFormats, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+        Application.CutCopyMode = False
+     
+     '--------------------------------------打上边框--------------------------------------------
+      Range("A4:G" & Range("A30").End(xlUp).Row).Select
+         Selection.Borders(xlDiagonalDown).LineStyle = xlNone
+        Selection.Borders(xlDiagonalUp).LineStyle = xlNone
+        With Selection.Borders(xlEdgeLeft)
+            .LineStyle = xlContinuous
+            .ColorIndex = 0
+            .TintAndShade = 0
+            .Weight = xlThin
+        End With
+        With Selection.Borders(xlEdgeTop)
+            .LineStyle = xlContinuous
+            .ColorIndex = 0
+            .TintAndShade = 0
+            .Weight = xlThin
+        End With
+        With Selection.Borders(xlEdgeBottom)
+            .LineStyle = xlContinuous
+            .ColorIndex = 0
+            .TintAndShade = 0
+            .Weight = xlThin
+        End With
+        With Selection.Borders(xlEdgeRight)
+            .LineStyle = xlContinuous
+            .ColorIndex = 0
+            .TintAndShade = 0
+            .Weight = xlThin
+        End With
+        With Selection.Borders(xlInsideVertical)
+            .LineStyle = xlContinuous
+            .ColorIndex = 0
+            .TintAndShade = 0
+            .Weight = xlThin
+        End With
+        With Selection.Borders(xlInsideHorizontal)
+            .LineStyle = xlContinuous
+            .ColorIndex = 0
+            .TintAndShade = 0
+            .Weight = xlThin
+        End With
+     '--------------------------------------居中--------------------------------------------
+       With Selection
+            .HorizontalAlignment = xlGeneral
+            .VerticalAlignment = xlCenter
+            .WrapText = False
+            .Orientation = 0
+            .AddIndent = False
+            .IndentLevel = 0
+            .ShrinkToFit = False
+            .ReadingOrder = xlContext
+            .MergeCells = False
+        End With
+        With Selection
+            .HorizontalAlignment = xlCenter
+            .VerticalAlignment = xlCenter
+            .WrapText = False
+            .Orientation = 0
+            .AddIndent = False
+            .IndentLevel = 0
+            .ShrinkToFit = False
+            .ReadingOrder = xlContext
+            .MergeCells = False
+        End With
+        Range("A4").Select
+        Range("A4").Activate
+'    Else
+'        MsgBox "此界面或此文件不适合本命令"
+'    End If
+    
+End Sub
+    
+  
+Sub crImport()
+'创建导入文件
+    Dim D As Object, s As String
+    Set D = CreateObject("scripting.dictionary")
+    
+    lastRow = [A65536].End(xlUp).Row
+    For i = 6 To lastRow
+        s = "NEManagedElement_" & Cells(i, "C") & "_" & Cells(i, "I") & ".xlsx"
+        If Not D.Exists(s) Then
+        D.Add s, ""
+        End If
+    Next
+    
+    Dim thisWb As Workbook
+    Set thisWb = ThisWorkbook
+'    Dim rng As Range
+'    Set rng = thisWb.Worksheets("基站网元状态").[C2:N5]
+'    选中状态 (Y/N)  子网ID  网元ID
+    Dim wb As Workbook
+    For Each Key In D
+        thisWb.Sheets("NEManagedElement").Visible = True
+        thisWb.Sheets("NEManagedElement").Copy
+        Set wb = ActiveWorkbook
+        wb.ActiveSheet.Columns("A:L").NumberFormatLocal = "@"
+'        wb.ActiveSheet.[A1] = "选中状态 (Y/N)"
+'        wb.ActiveSheet.[B1] = "子网ID"
+'        wb.ActiveSheet.[C1] = "网元ID"
+'        rng.Copy wb.ActiveSheet.Range("A1") '把表头复制过去
+        wb.SaveAs Key
+'        Debug.Print "wb.Name:" & wb.Name
+    Next
+    Set wb = Nothing
+    thisWb.Sheets("NEManagedElement").Visible = False
+    For i = 6 To lastRow
+'            SubNetwork = thisWb.ActiveSheet.Cells(i, "F")
+'            MEID = thisWb.ActiveSheet.Cells(i, "H")
+            s = "NEManagedElement_" & thisWb.Worksheets("基站网元状态").Cells(i, "C") & "_" & thisWb.Worksheets("基站网元状态").Cells(i, "I") & ".xlsx"
+'            Debug.Print "s:" & s
+            With Workbooks(s).ActiveSheet
+                lastRow2 = .[B65536].End(xlUp).Row + 1
+'                Debug.Print thisWb.Worksheets("基站网元状态").Cells(i, 4).Value
+                thisWb.Worksheets("基站网元状态").Cells(i, 3).Resize(1, 12).Copy .Cells(lastRow2, 1) '把数值复制到导入表
+                Application.CutCopyMode = False
+                .Cells(lastRow2, 1).ClearContents '把结果内容清空
+                .Cells(lastRow2, 10).Resize(1, 3) = 0 '最后三列赋值为0
+    '               .Cells(lastRow2, 1) = "Y"
+    '               .Cells(lastRow2, 2) = Trim(SubNetwork)
+    '               .Cells(lastRow2, 3) = Trim(MEID)
+            End With
+    Next
+    
+    For Each Key In D
+        Workbooks(Key).Save
+        Workbooks(Key).Close
+    Next
+    
+    Set D = Nothing
+    
+End Sub
+
+Function strSum(st)
+
+    s = 0
+    For Each sb In Split(st, ";")
+        s = s + sb
+    Next
+    strSum = s
+
+End Function
