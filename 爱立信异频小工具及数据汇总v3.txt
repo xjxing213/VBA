@@ -1,0 +1,961 @@
+【userform1】
+Public batch$
+
+Public Sub OptionButton1_Click()
+UserForm1.Hide
+End Sub
+
+Public Sub OptionButton2_Click()
+UserForm1.Hide
+End Sub
+
+Public Sub OptionButton3_Click()
+UserForm1.Hide
+End Sub
+
+Private Sub UserForm_Initialize()
+Me.OptionButton1.Value = False
+Me.OptionButton2.Value = False
+Me.OptionButton3.Value = False
+End Sub
+
+【userform2】
+Public arr, brr, eNBtype$, dateStr$
+
+Sub sgUnable()
+    UserForm2.sg_du.Enabled = False
+    UserForm2.sg_bb.Enabled = False
+    UserForm2.sg_du.ListIndex = -1
+    UserForm2.sg_bb.ListIndex = -1
+End Sub
+
+Sub sgEnable()
+    UserForm2.sg_du.Enabled = True
+    UserForm2.sg_bb.Enabled = True
+    UserForm2.sg_du.ListIndex = 0
+    UserForm2.sg_bb.ListIndex = 1
+End Sub
+
+Sub delClick()
+    UserForm2.qs_bb.Visible = False
+    UserForm2.Label_BB.Visible = False
+    UserForm2.Label_DU.Caption = "DU&BB"
+    UserForm2.qs_du.ListIndex = 4
+End Sub
+
+Sub delNotClick()
+    UserForm2.qs_bb.Visible = True
+    UserForm2.Label_BB.Visible = True
+    UserForm2.Label_DU.Caption = "DU"
+    UserForm2.qs_du.ListIndex = 1
+    UserForm2.qs_bb.ListIndex = 2
+End Sub
+
+Private Sub batch1_Click()
+    Call sgUnable
+    Call delNotClick
+End Sub
+
+Private Sub batch2_Click()
+    Call sgEnable
+    Call delNotClick
+End Sub
+
+Private Sub batch3_Click()
+    Call sgEnable
+    Call delNotClick
+End Sub
+
+Private Sub clearCmd_Click()
+    UserForm2.TextBox1.Text = ""
+End Sub
+
+Private Sub del_Click()
+    UserForm2.qs_du.ListIndex = 1
+    UserForm2.qs_bb.ListIndex = 2
+    Call sgUnable
+    Call delClick
+End Sub
+
+Private Sub crIptxt_Click()
+    Dim err, frr, eUb%, lRow%
+    Dim qsbbn%, qsdun%, sgbbn%, sgdun%
+    Dim parts_du, parts_bb, parts_du_sg, parts_bb_sg
+    parts_du = UserForm2.qs_du.Text
+    parts_bb = UserForm2.qs_bb.Text
+
+    With Worksheets("网元数据")
+        .Select
+        lRow = .[D65536].End(xlUp).Row
+        err = .Range("D2:G" & lRow)
+        eUb = lRow - 1
+        '------------------------------删除
+        If UserForm2.del.Value = True Then
+            frr = Application.WorksheetFunction.Transpose(.Range("D2:D" & lRow))
+            Call crIptext(frr, parts_du, "ip")
+            Call crSummary("删除")
+        '------------------------------新增1
+        ElseIf UserForm2.batch1.Value = True Then
+            Dim bb_err(), du_err()
+            qsbbn = 1: qsdun = 1
+            For i = 1 To eUb
+                If err(i, 4) = "BB" Then
+                    ReDim Preserve bb_err(1 To qsbbn)
+                    bb_err(qsbbn) = err(i, 1)
+                    qsbbn = qsbbn + 1
+                ElseIf err(i, 4) = "DU" Then
+                    ReDim Preserve du_err(1 To qsdun)
+                    du_err(qsdun) = err(i, 1)
+                    qsdun = qsdun + 1
+                End If
+            Next
+            Call crIptext(du_err, parts_du, "du_ip")
+            Call crIptext(bb_err, parts_bb, "bb_ip")
+            Call crSummary("新增第一组")
+        '------------------------------新增23
+        ElseIf UserForm2.batch2.Value = True Or UserForm2.batch3.Value = True Then
+        '2地市4类型
+            Dim qs_du_err(), qs_bb_err(), sg_du_err(), sg_bb_err()
+            qsbbn = 1: qsdun = 1: sgbbn = 1: sgdun = 1
+            For i = 1 To eUb
+                If err(i, 2) <> "韶关" And err(i, 4) = "BB" Then
+                    ReDim Preserve qs_bb_err(1 To qsbbn)
+                    qs_bb_err(qsbbn) = err(i, 1)
+                    qsbbn = qsbbn + 1
+                ElseIf err(i, 2) <> "韶关" And err(i, 4) = "DU" Then
+                    ReDim Preserve qs_du_err(1 To qsdun)
+                    qs_du_err(qsdun) = err(i, 1)
+                    qsdun = qsdun + 1
+                ElseIf err(i, 2) = "韶关" And err(i, 4) = "BB" Then
+                    ReDim Preserve sg_bb_err(1 To sgbbn)
+                    sg_bb_err(sgbbn) = err(i, 1)
+                    sgbbn = sgbbn + 1
+                ElseIf err(i, 2) = "韶关" And err(i, 4) = "DU" Then
+                    ReDim Preserve sg_du_err(1 To sgdun)
+                    sg_du_err(sgdun) = err(i, 1)
+                    sgdun = sgdun + 1
+                End If
+            Next
+            parts_du_sg = UserForm2.sg_du.Text
+            parts_bb_sg = UserForm2.sg_bb.Text
+            Call crIptext(qs_du_err, parts_du, "du_ip")
+            Call crIptext(qs_bb_err, parts_bb, "bb_ip")
+            Call crIptext(sg_du_err, parts_du_sg, "du_ip_SG")
+            Call crIptext(sg_bb_err, parts_bb_sg, "bb_ip_SG")
+            If UserForm2.batch2.Value = True Then
+                Call crSummary("新增第二组")
+            ElseIf UserForm2.batch3.Value = True Then
+                Call crSummary("新增第三组")
+            End If
+            
+        End If
+     End With
+     MsgBox "己生成IP文件"
+End Sub
+Sub crIptext(err, parts, fname)
+    
+    Dim f$, eUb%, quotient%, n%
+    eUb = UBound(err)
+    quotient = Int(eUb / parts) '商
+    n = 1
+    For i = 1 To eUb
+        If i = (n - 1) * quotient + 1 Then
+            f = ThisWorkbook.Path & "\" & fname & n & ".txt"
+            Open f For Output As #1
+        End If
+        If (n <> parts And i = n * quotient) Or i = eUb Then
+            Print #1, err(i);
+            Close #1
+            n = n + 1
+        Else
+            Print #1, err(i)
+        End If
+    Next
+End Sub
+
+Sub crSummary(batch)
+    Application.ScreenUpdating = False
+    With Worksheets("汇总（自动）")
+    Dim lRow%, grr
+'        .Select
+        lRow_eNBdata = Worksheets("网元数据").[D65536].End(xlUp).Row
+        grr = Worksheets("网元数据").Range("E2:G" & lRow_eNBdata)
+        Dim du1%, du2%, du3%, bb1%, bb2%, bb3%, sgdu3%, sgbb3%
+        du1 = 0: du2 = 0: du3 = 0: bb1 = 0: bb2 = 0: bb3 = 0: sgdu3 = 0: sgbb3 = 0
+        For i = 1 To UBound(grr)
+            If grr(i, 2) = "OSS1" And grr(i, 3) = "DU" Then du1 = du1 + 1
+            If grr(i, 2) = "OSS1" And grr(i, 3) = "BB" Then bb1 = bb1 + 1
+            If grr(i, 2) = "OSS2" And grr(i, 3) = "DU" Then du2 = du2 + 1
+            If grr(i, 2) = "OSS2" And grr(i, 3) = "BB" Then bb2 = bb2 + 1
+            If grr(i, 2) = "OSS3" And grr(i, 3) = "DU" Then du3 = du3 + 1
+            If grr(i, 2) = "OSS3" And grr(i, 3) = "BB" Then bb3 = bb3 + 1
+            If grr(i, 1) = "韶关" And grr(i, 3) = "DU" Then sgdu3 = sgdu3 + 1
+            If grr(i, 1) = "韶关" And grr(i, 3) = "BB" Then sgbb3 = sgbb3 + 1
+        Next
+        
+        lRow = .[B65536].End(xlUp).Row + 1
+        .Cells(lRow, 1) = Date
+        .Cells(lRow, 2) = du1
+        .Cells(lRow, 3) = bb1
+        .Cells(lRow, 4) = du2
+        .Cells(lRow, 5) = bb2
+        .Cells(lRow, 6) = du3
+        .Cells(lRow, 7) = bb3
+        .Cells(lRow, 8) = sgdu3
+        .Cells(lRow, 9) = sgbb3
+        .Cells(lRow, 10) = UBound(grr)
+        .Cells(lRow, 11) = batch
+        .Rows("3:3").Copy
+        .Rows(lRow).PasteSpecial Paste:=xlPasteFormats, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+    End With
+    Application.ScreenUpdating = True
+    
+End Sub
+
+Private Sub insertDate_Click()
+    Application.ScreenUpdating = False
+    If UserForm2.TextBox1.Text = "" Then
+        MsgBox "请添加数据"
+    Else
+        If UserForm2.DU.Value = True Then
+            eNBtype = "DU"
+        ElseIf UserForm2.BB.Value = True Then
+            eNBtype = "BB"
+        End If
+        Dim lRow%, lIp$
+        
+        Dim dCity As Object, dOSS As Object, rng As Range
+        Set dCity = CreateObject("Scripting.Dictionary")
+        Set dOSS = CreateObject("Scripting.Dictionary")
+        With Worksheets("ip对应地市名工具")
+            For i = 1 To .[A65536].End(xlUp).Row
+                dCity.add .Cells(i, 1).Value, .Cells(i, 2).Value
+                dOSS.add .Cells(i, 1).Value, .Cells(i, 3).Value
+            Next
+        End With
+        
+        Dim crr, drr()
+        Dim n%, s$
+        s = UserForm2.TextBox1.Text
+        arr = Split(s, vbCrLf)
+        n = 0: dataStr = ""
+        For Each a In arr
+            If a <> "" Then
+                dataStr = a & "|" & dataStr
+                n = n + 1
+            End If
+        Next
+       
+        crr = Split(dataStr, "|")
+        ReDim Preserve drr(n - 1, 6) '------------
+        With Worksheets("网元数据")
+            .Select
+            .Activate
+            For i = 0 To UBound(crr) - 1
+                    brr = Split(crr(i), ";")
+                    lIp = Left(brr(3), 6)
+                    If lIp <> "8.137." Then '过滤8.137站点
+                        drr(i, 0) = brr(0)
+                        drr(i, 1) = brr(1)
+                        drr(i, 2) = brr(2)
+                        drr(i, 3) = brr(3)
+                        drr(i, 4) = dCity(lIp)
+                        drr(i, 5) = dOSS(lIp)
+                        drr(i, 6) = eNBtype
+                    End If
+            Next
+            lRow = .[A65536].End(xlUp).Row + 1
+            Dim llRow%
+            llRow = lRow + UBound(drr)
+            Range(Cells(lRow, 1), Cells(llRow, 7)) = drr
+        End With
+        UserForm2.TextBox1.Text = ""
+        MsgBox "添加完成"
+    End If
+    Application.ScreenUpdating = True
+End Sub
+
+Private Sub TextBox1_Change()
+    Dim s$
+    s = UserForm2.TextBox1.Text
+    arr = Split(s, vbCrLf)
+    n = 0: dataStr = ""
+    For Each a In arr
+        If a <> "" Then
+            dataStr = dataStr & "|" & a
+            n = n + 1
+        End If
+    Next
+    UserForm2.Label1.Caption = "获取到" & n & "条数据"
+End Sub
+
+Private Sub UserForm_Initialize()
+
+    '清除原数据
+    yes_no = MsgBox("是否清空“网元数据”子表原数据", vbYesNo)
+    If yes_no = vbYes Then
+        lRow = Worksheets("网元数据").[A65536].End(xlUp).Row
+        If lRow > 1 Then Worksheets("网元数据").Rows("2:" & lRow).Delete
+    End If
+    UserForm2.DU.Value = True
+    For i = 1 To 10
+        UserForm2.qs_du.AddItem i
+        UserForm2.qs_bb.AddItem i
+        UserForm2.sg_du.AddItem i
+        UserForm2.sg_bb.AddItem i
+    Next
+
+End Sub
+
+【模块1】
+'Sub 去空行()
+''
+'' 去空行 宏
+''
+'' 快捷键: Ctrl+q
+''
+'    Columns("D:D").Select
+'    Selection.SpecialCells(xlCellTypeBlanks).Select
+'    Selection.EntireRow.Delete
+'    Range("D1").Select
+'    'Range(Selection, Selection.End(xlDown)).Select
+'    'Selection.Copy
+'
+'End Sub
+
+Sub CheckIPNum()
+On Error Resume Next
+Dim arr
+Dim j As Integer, all_num As Integer
+all_num = 0
+Set dic = CreateObject("scripting.dictionary")
+With Application.FileDialog(msoFileDialogFilePicker)
+        .AllowMultiSelect = True
+        '多选
+        .Filters.Clear
+        '清除文件过滤器
+        .Filters.add "Excel Files", "*.txt"
+        .Filters.add "All Files", "*.*"
+        '设置两个文件过滤器
+        Dim showOkCancel As Integer
+        showOkCancel = .Show
+        'FileDialog 对象的 Show 方法显示对话框，并且返回 -1（如果您按 OK）和 0（如果您按 Cancel）。
+        If showOkCancel = -1 Then
+            For i = 1 To .SelectedItems.Count
+'                  Debug.Print "您选择的文件是：" & .SelectedItems(i)
+                    Open .SelectedItems(i) For Input As #1
+            '        把所有内容赋值给数组
+                    arr = Split(StrConv(InputB(LOF(1), 1), vbUnicode), vbCrLf)
+                    Close #1
+'                    把所有内容存入字典内
+                    all_num = all_num + UBound(arr) + 1
+                    For j = 0 To UBound(arr)
+                        dic.add arr(j), ""
+                    Next j
+            Next i
+            MsgBox "检测到IP数：总数" & all_num & "  去重后" & dic.Count & "个"
+            If all_num <> dic.Count Then
+                    MsgBox "数据有重复，请去重！！"
+                Else
+                    Dim lRow%
+                    lRow = Worksheets("网元数据").[D65536].End(xlUp).Row - 1
+                    If lRow = dic.Count Then
+                        MsgBox "恭喜你，txt文件IP总数与数据透视总数一致。"
+                    Else
+                        MsgBox "-_-txt文件IP总数与数据透总数不一致！！！"
+                    End If
+            End If
+        End If
+    End With
+
+
+End Sub
+
+Function BatchReplacement(p)
+    '选择多个文件
+    Dim old_arr, new_arr
+   
+    If p = 0 Then
+        old_arr = [c2:g2 & ""]
+        new_arr = [c3:g3 & ""]
+    ElseIf p = 1 Then
+        old_arr = [c5:g5 & ""]
+        new_arr = [c6:g6 & ""]
+    End If
+    
+    Dim arr
+    Dim i As Integer, j As Integer, k As Integer
+    
+    With Application.FileDialog(msoFileDialogFilePicker)
+        .AllowMultiSelect = True
+        '多选
+        .Filters.Clear
+        '清除文件过滤器
+        .Filters.add "Excel Files", "*.mos"
+        .Filters.add "All Files", "*.*"
+        '设置两个文件过滤器
+        Dim showOkCancel As Integer
+        showOkCancel = .Show
+        'FileDialog 对象的 Show 方法显示对话框，并且返回 -1（如果您按 OK）和 0（如果您按 Cancel）。
+        If showOkCancel = -1 Then
+        For i = 1 To .SelectedItems.Count
+                If i = 1 Then
+                    Dim FullName As String
+                    FullName = .SelectedItems(1)
+                End If
+        '       读取文件并替换
+                Debug.Print "您选择的文件是：" & .SelectedItems(i)
+                Open .SelectedItems(i) For Input As #1
+        '        把所有内容赋值给数组
+                arr = Split(StrConv(InputB(LOF(1), 1), vbUnicode), vbCrLf)
+                Close #1
+                For j = 0 To UBound(arr)
+                    For k = 1 To UBound(old_arr)
+                        If (Left(arr(j), 3) = "del") Then
+                            If (Right(new_arr(5), 3) = "1st") Then
+                                arr(j) = "//" & arr(j)
+                            ElseIf (Right(new_arr(5), 3) = "2nd" Or Right(new_arr(5), 3) = "3rd") Then
+                                'del EUtranFreqRelation=(38400|38350|37900|500)
+                                arr(j) = "del EUtranFreqRelation=(" & old_arr(1) & "|" & old_arr(2) & "|" & old_arr(3) & "|" & old_arr(4) & ")"
+                            End If
+                        ElseIf (Left(arr(j), 5) = "//del") Then
+                            If (Right(new_arr(5), 3) = "1st") Then
+                                arr(j) = arr(j)
+                            ElseIf (Right(new_arr(5), 3) = "2nd" Or Right(new_arr(5), 3) = "3rd") Then
+                                arr(j) = "del EUtranFreqRelation=(" & old_arr(1) & "|" & old_arr(2) & "|" & old_arr(3) & "|" & old_arr(4) & ")"
+                            End If
+                        Else
+                            arr(j) = Replace(arr(j), old_arr(k), new_arr(k))
+                        End If
+                    Next k
+                Next j
+                
+        '        替换后直接覆盖文件
+            Set objFSO = CreateObject("Scripting.FileSystemObject")
+            Set sFile = objFSO.CreateTextFile(.SelectedItems(i), True) '第二个参数表示目标文件存在时是否覆盖
+                For Each l In arr
+                    sFile.WriteLine (l)
+                Next
+            sFile.Close
+            Set sFile = Nothing
+            Set objFSO = Nothing
+        Next
+        
+            
+        MsgBox "替换成功，请人工核查一次"
+'        打开文件所有位置
+        Path = Left(FullName, InStrRev(FullName, "\") - 1)
+        Shell "explorer.exe " & Path, vbNormalFocus
+        End If
+    End With
+   
+End Function
+
+
+'
+'Sub crTxt()
+'
+'        On Error Resume Next
+'        Dim f, arr, x, nxt, n, pth, svrname, rowend, msb
+'        Dim txt_num As Integer
+'        Dim tail As Integer
+'
+'        pth = ThisWorkbook.Path()
+'        rowend = ActiveSheet.Range("D100000").End(xlUp).Row
+'        svrname = ActiveSheet.name
+'
+'
+'        Dim tn As Integer
+'        If (svrname = "合并du-首行空") Then
+'            tn = 2
+'            svrname = "du_ip"
+'        ElseIf (svrname = "合并bb-首行空") Then
+'            tn = 3
+'            svrname = "bb_ip"
+'        ElseIf (svrname = "enb-du韶关") Then
+'            tn = 1
+'            svrname = "du_ip_SG"
+'        ElseIf (svrname = "lrn-bb韶关") Then
+'            tn = 2
+'            svrname = "bb_ip_SG"
+'        ElseIf (svrname = "网元数据") Then
+'            tn = 3
+'            svrname = "ip"
+'        End If
+'
+'        txt_num = InputBox("把IP分成几份txt?", "输入提示", tn)
+'
+'        If txt_num <> 0 And Range("D2").Value <> "" Then
+'
+'            arr = ActiveSheet.Range("D2:D" & rowend)
+'            alen = UBound(arr)
+'            shang = Fix(alen / txt_num)
+'            yushu = alen Mod txt_num
+'
+'            For x = 1 To txt_num
+'                f = pth & "\" & svrname & x & ".txt"
+'                Open f For Append As #1
+'
+'                If x = txt_num Then
+'                    tail = yushu
+'                    Else
+'                    tail = 0
+'                End If
+'
+'                    Dim yend As Integer
+'                    yend = shang * x + tail
+'                    For y = shang * (x - 1) + 1 To yend
+'                        If y = yend Then
+'                            Print #1, arr(y, 1); '去除文件末尾空行
+'                            Else
+'                            Print #1, arr(y, 1)
+'                        End If
+'                    Next y
+'
+'                Close #1
+'            Next x
+'
+'            Erase arr
+'            MsgBox "成功！"
+'            Exit Sub
+'
+'        End If
+'
+'
+'End Sub
+
+
+Sub WholeProvince()
+Call BatchReplacement(0)
+End Sub
+
+Sub SpecialArea()
+Call BatchReplacement(1)
+End Sub
+
+【模块2】
+
+Sub crDelReport()
+
+    t1 = Timer
+    Application.ScreenUpdating = False
+        Call importLog
+        Call findBrokenStation
+        Call nowCrReport
+        Call crFile
+    Application.ScreenUpdating = True
+    t2 = Timer
+    MsgBox "己完成，运行时间 = " & (t2 - t1) * 1000 & " ms"
+
+End Sub
+Sub crFile()
+
+    '爱立信异频测量配置结果_9月第四组.xlsx
+    Worksheets("结果统计-删除").Copy
+    With ActiveSheet
+        .Select
+        .Columns("A:E").Delete
+        On Error Resume Next
+'        .Shapes.Range(Array("Picture 1")).Delete
+
+        Dim shp As Object
+        For Each shp In ActiveSheet.Shapes
+            shp.Delete
+        Next shp
+        
+        [G1] = "执行结果"
+        [G2] = "断站"
+        [G3] = "执行成功"
+        [G4] = "总计"
+        
+        [H1] = "数量"
+        [H2].formula = "=COUNTIF(E:E,G2)"
+        [H3].formula = "=COUNTIF(E:E,G3)"
+        [H4].formula = "=SUM(H2:H3)"
+    End With
+'    格式化
+    Call formatting
+    
+    ActiveWorkbook.SaveAs "爱立信异频测量配置结果_" & Month(Date) & "月第四组.xlsx"
+    
+End Sub
+
+Sub nowCrReport()
+Application.ScreenUpdating = False
+    Dim dCity As Object, dOSS As Object, rng As Range
+    Set dCity = CreateObject("Scripting.Dictionary")
+    Set dOSS = CreateObject("Scripting.Dictionary")
+    With Worksheets("ip对应地市名工具")
+    For i = 1 To .[A65536].End(xlUp).Row
+        dCity.add .Cells(i, 1).Value, .Cells(i, 2).Value
+        dOSS.add .Cells(i, 1).Value, .Cells(i, 3).Value
+    Next
+    End With
+    
+    Dim lRow%, leftIp$
+    lRow = [A65536].End(xlUp).Row
+'    地市    OSS归属 IP  网元名  删除异频结果
+    On Error Resume Next
+    For i = 2 To lRow
+        If Cells(i, 1).Value <> "" Then
+            leftIp = Left(Cells(i, 1).Value, 6)
+            Cells(i, 6).formula = dCity(leftIp)
+            Cells(i, 7).formula = dOSS(leftIp)
+            Cells(i, 8) = Cells(i, 1)
+            Cells(i, 9) = Cells(i, 2)
+            Cells(i, 10) = IIf(Cells(i, 4) = "", "断站", "执行成功")
+        End If
+    Next
+    '此处妙，多重功能：删除A列空行，不正确IP，8.137站点
+    Columns("F:F").SpecialCells(xlCellTypeBlanks).EntireRow.Delete
+'    格式化
+    Application.ScreenUpdating = True
+    
+End Sub
+
+
+Sub findBrokenStation()
+
+    Dim arr, brr, crr, lRow%, lRow2%
+    lRow = [A65535].End(xlUp).Row
+    arr = WorksheetFunction.Transpose(Range("A2:A" & lRow & "").Value) '删除的IP列
+    With Worksheets("网元数据")
+        lRow2 = .[A65535].End(xlUp).Row
+        brr = WorksheetFunction.Transpose(.Range("D2:D" & lRow2 & "").Value) '网元数据的D列基站IP
+        crr = WorksheetFunction.Transpose(.Range("A2:A" & lRow2 & "").Value) '网元数据的A列基站名称
+    End With
+  
+    Dim ip(2000, 1 To 1), eNodeB(2000, 1 To 1)
+    j = 0
+    For i = 1 To UBound(brr)
+        If UBound(Filter(arr, brr(i))) = -1 Then
+           ip(j, 1) = brr(i)
+           eNodeB(j, 1) = crr(i)
+           j = j + 1
+        End If
+    Next
+
+    lRow = [A65536].End(xlUp).Row + 1
+    Dim iUb%
+    iUb = UBound(ip)
+    Range(Cells(lRow, 1), Cells(lRow + iUb, 1)) = ip
+    Range(Cells(lRow, 2), Cells(lRow + iUb, 2)) = eNodeB
+    '除重
+    ActiveSheet.Range("$A$1:$E$65536").RemoveDuplicates Columns:=1, Header:=xlYes
+    
+End Sub
+
+
+Sub importLog()
+
+    '选择路径
+    Dim arr, brr, crr
+    Dim fd As FileDialog
+    Set fd = Application.FileDialog(msoFileDialogFilePicker)
+    If fd.Show <> -1 Then '不等于-1表示没有选取任何文件
+        Set fd = Nothing
+        Exit Sub
+    End If
+    
+'    清除原数据
+    lRow = [A65536].End(xlUp).Row
+    If lRow > 1 Then Rows("2:" & lRow).Delete
+    
+
+    For Each a In fd.SelectedItems
+        If Right(a, 4) = ".log" Then
+            Open a For Input As #1
+            arr = Split(StrConv(InputB(LOF(1), 1), vbUnicode), vbLf)
+            Close #1
+            aUb = UBound(arr)
+            ReDim crr(aUb, 4)
+            For i = 0 To aUb
+                brr = Split(arr(i), ",")
+                For j = 0 To UBound(brr)
+                    crr(i, j) = brr(j)
+                Next
+            Next
+            
+            lRow = [A65536].End(xlUp).Row + 1
+            Range(Cells(lRow, 1), Cells(lRow + aUb, 5)) = crr
+            
+        End If
+    Next
+
+    Set fd = Nothing
+
+End Sub
+
+
+Sub formatting()
+'    置中，加边框，上色
+    Range("G1:H4").Select
+    With Selection
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .WrapText = False
+        .Orientation = 0
+        .AddIndent = False
+        .IndentLevel = 0
+        .ShrinkToFit = False
+        .ReadingOrder = xlContext
+        .MergeCells = False
+    End With
+    Selection.Borders(xlDiagonalDown).LineStyle = xlNone
+    Selection.Borders(xlDiagonalUp).LineStyle = xlNone
+    With Selection.Borders(xlEdgeLeft)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlEdgeRight)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlInsideVertical)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlInsideHorizontal)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    Range("G1:H1").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = 5287936
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    Range("G4:H4").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .ThemeColor = xlThemeColorAccent5
+        .TintAndShade = 0.599993896298105
+        .PatternTintAndShade = 0
+    End With
+    Rows("2:3").Select
+    Selection.RowHeight = 21
+    Range("G3").Select
+
+End Sub
+【模块3】
+    Public batch$
+Sub crAddReport()
+
+    UserForm1.Show
+    If UserForm1.OptionButton1.Value = True Then
+        batch = "一"
+    ElseIf UserForm1.OptionButton2.Value = True Then
+        batch = "二"
+    ElseIf UserForm1.OptionButton3.Value = True Then
+        batch = "三"
+    End If
+
+    t1 = Timer
+    Application.ScreenUpdating = False
+        Call importLog '引用模块2的方法
+        Call findBrokenStation '引用模块2的方法
+        Call nowCrReport2
+        Call crFile2
+    Application.ScreenUpdating = True
+    t2 = Timer
+    MsgBox "己完成，运行时间 = " & (t2 - t1) * 1000 & " ms"
+
+End Sub
+
+Sub crFile2()
+
+    Worksheets("结果统计-新增").Copy
+    With ActiveSheet
+        .Select
+        .Columns("A:E").Delete
+        On Error Resume Next
+        .Shapes.Range(Array("Picture 1")).Delete
+        
+        Dim shp As Object
+        For Each shp In ActiveSheet.Shapes
+            shp.Delete
+        Next shp
+        
+        [I1] = "执行结果"
+        [I2] = "断站"
+        [I3] = "配齐4个频点"
+        [I4] = "无小区数据"
+        [I5] = "因占用频点未配齐"
+        [I6] = "总计"
+
+        [J1] = "数量"
+        [J2].formula = "=COUNTIF(E:E,I2)"
+        [J3].formula = "=COUNTIF(E:E,I3)"
+        [J4].formula = "=COUNTIF(E:E,I4)"
+        [J5].formula = "=COUNTIF(E:E,I5)"
+        [J6].formula = "=SUM(J2:J5)"
+    End With
+    '格式化
+    Call formatting2
+    '选择批次
+    
+    ActiveWorkbook.SaveAs "爱立信异频测量配置结果_" & Month(Date) & "月第" & batch & "组.xlsx"
+    
+End Sub
+
+Sub nowCrReport2()
+    Application.ScreenUpdating = False
+    Dim d As Object, rng As Range
+    Set dCity = CreateObject("Scripting.Dictionary")
+    Set dOSS = CreateObject("Scripting.Dictionary")
+    With Worksheets("ip对应地市名工具")
+    For i = 1 To .[A65536].End(xlUp).Row
+        dCity.add .Cells(i, 1).Value, .Cells(i, 2).Value
+        dOSS.add .Cells(i, 1).Value, .Cells(i, 3).Value
+    Next
+    End With
+    
+    Dim lRow%, leftIp$, cellsNum, freqNum%
+    lRow = [A65536].End(xlUp).Row
+    On Error Resume Next
+    For i = 2 To lRow
+        '如果Cells(i, 1).Value为空，则对应行不作处理，也为空
+        If Cells(i, 1).Value <> "" Then
+            leftIp = Left(Cells(i, 1).Value, 6)
+            Cells(i, 6) = dCity(leftIp)
+            Cells(i, 7) = Cells(i, 2) '名称
+            Cells(i, 8) = Cells(i, 1) 'IP
+            Cells(i, 9) = dOSS(leftIp)
+            cellsNum = Cells(i, 4).Value
+            freqNum = Cells(i, 5).Value
+            Cells(i, 10) = addResult(cellsNum, freqNum)
+            Cells(i, 11) = Cells(i, 4).Value
+            Cells(i, 12) = Cells(i, 5).Value
+        End If
+    Next
+    '此处妙，多重功能：删除A列空行，不正确IP，8.137站点
+    Columns("F:F").SpecialCells(xlCellTypeBlanks).EntireRow.Delete
+    Application.ScreenUpdating = True
+    
+End Sub
+
+Function addResult(cellsNum, freqNum)
+    
+    If cellsNum = "" Then
+        addResult = "断站"
+    ElseIf cellsNum = 0 Then
+        addResult = "无小区数据"
+    ElseIf freqNum / cellsNum = 4 Then
+        addResult = "配齐4个频点"
+    Else
+        addResult = "因占用频点未配齐"
+    End If
+
+End Function
+
+Sub formatting2()
+'    置中，加边框，上色
+    Range("I1:J6").Select
+    With Selection
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .WrapText = False
+        .Orientation = 0
+        .AddIndent = False
+        .IndentLevel = 0
+        .ShrinkToFit = False
+        .ReadingOrder = xlContext
+        .MergeCells = False
+    End With
+    Selection.Borders(xlDiagonalDown).LineStyle = xlNone
+    Selection.Borders(xlDiagonalUp).LineStyle = xlNone
+    With Selection.Borders(xlEdgeLeft)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlEdgeRight)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlInsideVertical)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlInsideHorizontal)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    Range("I1:J1").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = 5287936
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    Range("I6:J6").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .ThemeColor = xlThemeColorAccent5
+        .TintAndShade = 0.599993896298105
+        .PatternTintAndShade = 0
+    End With
+    Rows("2:6").Select
+    Selection.RowHeight = 21
+
+    Columns("I:J").Select
+    Selection.ColumnWidth = 17.88
+
+End Sub
+
+
+
+
+
+
+
+
+
+
+
+
+
