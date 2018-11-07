@@ -1,0 +1,163 @@
+Public result As String
+
+Sub Main()
+    Application.ScreenUpdating = False
+    '选择路径
+    Dim fd As FileDialog
+    Set fd = Application.FileDialog(msoFileDialogFolderPicker)
+    If fd.Show = -1 Then
+        sFolderPath = fd.SelectedItems(1)
+        Set fd = Nothing
+        Else
+        Set fd = Nothing
+        Exit Sub
+    End If
+    '获取批次
+    Dim pici$, MRFreqCfg_QS$, MRFreqCfg_SG$
+    pici = ThisWorkbook.Worksheets("VBA").[h2].value
+    MRFreqCfg_QS = ThisWorkbook.Worksheets("VBA").[B4].value
+    MRFreqCfg_SG = ThisWorkbook.Worksheets("VBA").[C4].value
+    
+    result = sFolderPath & "\L中兴异频脚本检查结果" & Format(Date, "YYYYMMDD") & ".txt"
+    If Dir(result) <> "" Then Kill result '如果存在检查结果，则删除
+    
+    On Error Resume Next
+    Dim f As String
+    Dim file() As String
+    Dim i, k, x
+    i = 1
+    k = 1
+    
+    ReDim file(1 To i)
+    file(1) = sFolderPath & "\"
+    
+    '-- 获得所有子目录
+    Do Until i > k
+        f = Dir(file(i), vbDirectory)
+            Do Until f = ""
+'            Debug.Print f
+                If InStr(f, ".xlsx") = 0 And f <> "." And f <> ".." Then '过滤文件.xlsx及.\..
+'                Debug.Print f
+                    k = k + 1
+                    ReDim Preserve file(1 To k)
+                    file(k) = file(i) & f & "\"
+'                    Debug.Print file(k)
+                End If
+                f = Dir
+            Loop
+        i = i + 1
+    Loop
+
+    
+    '-- 获得所有子目录下的所有文件
+    m = 1
+    For i = 1 To k
+    '    Debug.Print file(i)
+        f = Dir(file(i) & "*.xlsx")    '通配符*.*表示所有文件，*.xlsx Excel文件
+        Do Until f = ""
+            FullName = file(i) & f
+            Call checkFile(FullName, pici, MRFreqCfg_QS, MRFreqCfg_SG)
+'            Debug.Print FullName
+            m = m + 1
+            f = Dir
+        Loop
+    Next
+
+    If Dir(result) <> "" Then
+        MsgBox "检测完毕，有异常"
+        Shell "explorer.exe " & result, vbNormalFocus
+    Else
+        MsgBox "检测完毕，脚本正常"
+    End If
+    Application.ScreenUpdating = True
+End Sub
+
+Sub checkFile(path, pici, MRFreqCfg_QS, MRFreqCfg_SG)
+    Application.ScreenUpdating = False
+    Dim sh As Worksheet, wb As Workbook
+    Dim intraFPeriodMeasSwitch%, interFPeriodMeasSwitch%, sib8SchedulMode%, ltePeriodFreqNum%, lteFreqNum%, mrFreqConfigPara%
+    
+    Application.Workbooks.Open (path)
+    Set wb = ActiveWorkbook
+    Set sh = wb.activesheet
+        Dim er As Integer
+        er = sh.[H65536].End(xlUp).Row
+        '-------------------------------------------------------EUtranCellMeasurement
+        If InStr(wb.Name, "EUtranCellMeasurement") > 0 Then
+            intraFPeriodMeasSwitch = Application.WorksheetFunction.Match("intraFPeriodMeasSwitch", sh.[1:1], False) '启用同频周期性测量
+            interFPeriodMeasSwitch = Application.WorksheetFunction.Match("interFPeriodMeasSwitch", sh.[1:1], False) '启用异频周期性测量
+            For i = 5 To er
+                If Trim(sh.Cells(i, intraFPeriodMeasSwitch).value) <> 1 Or Trim(sh.Cells(i, interFPeriodMeasSwitch).value) <> 1 Then
+                    s = "【出错了】位于文件" & vbCrLf & path
+                    Call PrintToFile(s)
+                    Exit For
+                End If
+            Next
+        '-------------------------------------------------------MRFreqCfg
+        ElseIf InStr(wb.Name, "MRFreqCfg") > 0 Then
+            ltePeriodFreqNum = Application.WorksheetFunction.Match("ltePeriodFreqNum", sh.[1:1], False) 'LTE周期测量频点数
+            lteFreqNum = Application.WorksheetFunction.Match("lteFreqNum", sh.[1:1], False) 'LTE附加配置频点个数
+            mrFreqConfigPara = Application.WorksheetFunction.Match("mrFreqConfigPara", sh.[1:1], False) 'MR频点相关配置
+            If pici = "删除" Then
+                For i = 5 To er
+                    If (InStr(wb.Name, "MRFreqCfgTDD_") > 0 And Trim(sh.Cells(i, ltePeriodFreqNum).value) <> 4) _
+                    Or (InStr(wb.Name, "MRFreqCfg_") > 0 And Trim(sh.Cells(i, ltePeriodFreqNum).value) <> 5) _
+                    Or Trim(sh.Cells(i, lteFreqNum).value) <> 0 Or sh.Cells(i, mrFreqConfigPara).value <> "" Then
+                        s = "【出错了】位于文件：" & vbCrLf & path
+                        Call PrintToFile(s)
+                        Exit For
+                    End If
+                Next
+            Else
+                For i = 5 To er
+                    If (InStr(wb.Name, "MRFreqCfgTDD_") > 0 And Trim(sh.Cells(i, ltePeriodFreqNum).value) <> 4) _
+                    Or (InStr(wb.Name, "MRFreqCfg_") > 0 And Trim(sh.Cells(i, ltePeriodFreqNum).value) <> 5) _
+                    Or Trim(sh.Cells(i, lteFreqNum).value) <> 4 _
+                    Or (InStr(path, "韶关") > 0 And checkMR(MRFreqCfg_SG, sh.Cells(i, mrFreqConfigPara).value)) _
+                    Or (InStr(path, "韶关") = 0 And checkMR(MRFreqCfg_QS, sh.Cells(i, mrFreqConfigPara).value)) Then
+                        s = "【出错了】位于文件：" & vbCrLf & path
+                        Call PrintToFile(s)
+                        Exit For
+                    End If
+                Next
+            End If
+        '-------------------------------------------------------SIBSchedulingConfig
+        ElseIf InStr(wb.Name, "SIBSchedulingConfig") > 0 Then
+            sib8SchedulMode = Application.WorksheetFunction.Match("sib8SchedulMode", sh.[1:1], False) 'LTE周期测量频点数
+            For i = 5 To er
+                If Trim(sh.Cells(i, sib8SchedulMode).value) <> 1 Then
+                    s = "【出错了】位于文件：" & vbCrLf & path
+                    Call PrintToFile(s)
+                    Exit For
+                End If
+            Next
+        End If
+    wb.Close False
+    Set wb = Nothing
+    Set sh = Nothing
+    Application.ScreenUpdating = True
+End Sub
+
+Sub PrintToFile(str)
+    
+    Open result For Append As #1
+    Print #1, str
+    Close #1
+    
+End Sub
+
+Function checkMR(s1, s2)
+
+    Dim arr, s$
+'    replace清理"[],空格"
+    arr = Split(Replace(Replace(Replace(Replace(s1, "[", ""), "]", ""), ",", ""), " ", ""), "}")
+    s2 = Replace(Replace(Replace(Replace(s2, "[", ""), "]", ""), ",", ""), " ", "")
+    For Each a In arr
+        If InStr(s2, a) = 0 Then
+'            Debug.Print path
+            checkMR = True
+            Exit For
+        End If
+    Next
+
+End Function
