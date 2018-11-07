@@ -1,0 +1,31 @@
+Sub csv2xlsx()
+    
+    Application.ScreenUpdating = False
+    
+    Dim FilePath, MyFile, iPath As String
+    iPath = ThisWorkbook.Path
+    MyFile = Dir(iPath & "\*.CSV")
+    
+    On Error Resume Next
+
+    Do While MyFile <> ""
+
+        Workbooks.Open (iPath & "\" & MyFile)
+        MyFile = ActiveWorkbook.Name
+        MyFile = Replace(MyFile, ".csv", ".xlsx", 1, -1, 1)
+        FilePath = iPath & "\" & MyFile
+                
+        ActiveWorkbook.SaveAs Filename:=FilePath, FileFormat:=xlOpenXMLWorkbook, CreateBackup:=False
+                
+        Workbooks(MyFile).Close True
+        
+        MyFile = Dir
+        
+    Loop
+    
+    Application.ScreenUpdating = True
+        
+
+    ThisWorkbook.Close False
+    
+End Sub
