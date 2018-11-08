@@ -1,0 +1,48 @@
+Sub crTxt()
+
+        On Error Resume Next
+        Dim pth$, rowend%
+        
+        pth = ThisWorkbook.Path()
+        rowend = ActiveSheet.Range("C10000").End(xlUp).Row
+        
+        On Error Resume Next
+        VBA.MkDir (pth & "\版本升级")
+        VBA.MkDir (pth & "\版本检查")
+        
+        For i = 2 To rowend
+            If ActiveSheet.Cells(i, 3) <> ActiveSheet.Cells(i - 1, 3) Then
+                f = pth & "\版本升级\BSC" & ActiveSheet.Cells(i, 3) & ".txt"
+                Open f For Append As #1
+                Print #1, ActiveSheet.Cells(i, 10)
+            Else
+                If ActiveSheet.Cells(i, 3) <> ActiveSheet.Cells(i + 1, 3) Then
+                    Print #1, ActiveSheet.Cells(i, 10); '去除文件末尾空行
+                    Close #1
+                Else
+                    Print #1, ActiveSheet.Cells(i, 10)
+                End If
+            End If
+        Next i
+        
+         For i = 2 To rowend
+            If ActiveSheet.Cells(i, 3) <> ActiveSheet.Cells(i - 1, 3) Then
+                f = pth & "\版本检查\BSC" & ActiveSheet.Cells(i, 3) & ".txt"
+                Open f For Append As #1
+                Print #1, ActiveSheet.Cells(i, 11)
+            Else
+                If ActiveSheet.Cells(i, 3) <> ActiveSheet.Cells(i + 1, 3) Then
+                    Print #1, ActiveSheet.Cells(i, 11); '去除文件末尾空行
+                    Close #1
+                Else
+                    Print #1, ActiveSheet.Cells(i, 11)
+                End If
+            End If
+        Next i
+            
+                
+                
+        MsgBox "生成指令成功！"
+        Exit Sub
+
+End Sub
