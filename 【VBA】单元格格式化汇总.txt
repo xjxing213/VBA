@@ -1,0 +1,12 @@
+with Range("A1:B10")
+    .HorizontalAlignment = xlLeft    '左对齐
+    .HorizontalAlignment = xlCenter  ' 居中
+    .HorizontalAlignment = xlRight   '右对齐
+    .Font.Bold = True '粗体
+    .Font.Italic = True '斜体
+    .Font.Name = "宋体" 
+    .Font.Size = 20
+    .Borders.LineStyle=1 '加边框
+    .Borders.LineStyle=0 '取消边框
+    .WrapText = True '自动换行
+end with
