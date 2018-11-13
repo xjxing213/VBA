@@ -1,0 +1,63 @@
+
+
+Sub getData()
+
+    Application.ScreenUpdating = False
+    '选择路径
+    Dim fd As FileDialog
+    Set fd = Application.FileDialog(msoFileDialogFolderPicker)
+    If fd.Show = -1 Then
+        sFolderPath = fd.SelectedItems(1)
+        Set fd = Nothing
+        Else
+        Set fd = Nothing
+        Exit Sub
+    End If
+    
+    On Error Resume Next
+    Dim f As String
+    Dim file() As String
+    Dim i, k, x
+    i = 1
+    k = 1
+    
+    ReDim file(1 To i)
+    file(1) = sFolderPath & "\"
+    
+    '-- 获得所有子目录
+    Do Until i > k
+        f = Dir(file(i), vbDirectory)
+            Do Until f = ""
+'            Debug.Print f
+                If InStr(f, ".xlsx") = 0 And f <> "." And f <> ".." Then '过滤文件.xlsx及.\..
+'                Debug.Print f
+                    k = k + 1
+                    ReDim Preserve file(1 To k)
+                    file(k) = file(i) & f & "\"
+'                    Debug.Print file(k)
+                End If
+                f = Dir
+            Loop
+        i = i + 1
+    Loop
+
+    
+    '-- 获得所有子目录下的所有文件
+    m = 1
+    For i = 1 To k
+    '    Debug.Print file(i)
+        f = Dir(file(i) & "*.xlsx")    '通配符*.*表示所有文件，*.xlsx Excel文件
+        Do Until f = ""
+            Debug.Print f
+            FullName = file(i) & f
+'            Call checkFile(FullName, pici, MRFreqCfg_QS, MRFreqCfg_SG)
+'            Debug.Print FullName
+            m = m + 1
+            f = Dir
+        Loop
+    Next
+
+'    MsgBox "合并完成"
+    Application.ScreenUpdating = True
+End Sub
+
