@@ -1,0 +1,138 @@
+﻿
+
+Sub getData()
+
+    Application.ScreenUpdating = False
+    '选择路径
+    Dim fd As FileDialog
+    Set fd = Application.FileDialog(msoFileDialogFolderPicker)
+    If fd.Show = -1 Then
+        sFolderPath = fd.SelectedItems(1)
+        Set fd = Nothing
+        Else
+        Set fd = Nothing
+        Exit Sub
+    End If
+    
+'    On Error Resume Next
+    Dim f As String
+    Dim file() As String
+    Dim i, k, x
+    i = 1
+    k = 1
+    
+    ReDim file(1 To i)
+    file(1) = sFolderPath & "\"
+    
+    
+    '-- 获得所有子目录
+    Do Until i > k
+        f = Dir(file(i), vbDirectory)
+            Do Until f = ""
+                If InStr(f, ".xls") = 0 And f <> "." And f <> ".." And InStr(f, ".doc") = 0 And InStr(f, ".pdf") = 0 Then '过滤文件.xlsx及.\..
+                    k = k + 1
+                    ReDim Preserve file(1 To k)
+                    file(k) = file(i) & f & "\"
+                End If
+                f = Dir
+            Loop
+        i = i + 1
+    Loop
+    
+    Dim retFilePath$
+    retFilePath = sFolderPath & "\材料厂家-合并结果.xlsx"
+    
+    If Dir(retFilePath, 16) <> Empty Then
+'        Debug.Print "killfile"
+        Kill retFilePath
+    End If
+
+    Dim resultWb As Workbook
+    Set resultWb = Workbooks.Add
+    Application.DisplayAlerts = False
+    resultWb.SaveAs Filename:=retFilePath, FileFormat:=xlOpenXMLWorkbook
+    Application.DisplayAlerts = True
+    ThisWorkbook.ActiveSheet.Rows("100:102").Copy resultWb.ActiveSheet.Rows("1:3")
+
+    '-- 获得所有子目录下的所有文件
+    Dim m%
+    m = 1
+    For i = 1 To k
+    '    Debug.Print file(i)
+        f = Dir(file(i) & "*.xlsx")    '通配符*.*表示所有文件，*.xlsx Excel文件
+        Do Until f = ""
+'            Debug.Print f
+            If f <> "材料厂家-合并结果.xlsx" Then
+                FullName = file(i) & f
+                If openAndCopyFile(FullName) Then m = m + 1
+            End If
+            f = Dir
+        Loop
+    Next
+
+    MsgBox "共完成" & m - 1 & "个文件合并"
+    Call formula
+    Application.ScreenUpdating = True
+End Sub
+
+Sub formula()
+
+    Dim retSht As Worksheet, lrow%
+    Set retSht = Workbooks("材料厂家-合并结果.xlsx").ActiveSheet
+    lrow = retSht.[A65536].End(xlUp).Row
+    With Range("A4:I" & lrow)
+        .WrapText = True '自动换行
+        .Borders.LineStyle = 1 '加边框
+        .HorizontalAlignment = xlCenter    ' 居中
+    End With
+
+End Sub
+
+Function openAndCopyFile(fpath)
+    openAndCopyFile = False
+    Application.ScreenUpdating = False
+    Dim sht As Worksheet, wb As Workbook, lrow%, tlrow%, i%, j%, k%, retSht As Worksheet, arr()
+
+
+    arr = Array("单位工程人材机汇总表", "单位工程设备汇总表")
+    Application.Workbooks.Open (fpath)
+    Set wb = ActiveWorkbook
+    Set retSht = Workbooks("材料厂家-合并结果.xlsx").ActiveSheet
+    On Error Resume Next
+    
+    For i = 1 To wb.Worksheets.Count
+            If InStr(Worksheets(i).Name, arr(0)) > 0 Or InStr(Worksheets(i).Name, arr(1)) > 0 Then
+                Set sht = Worksheets(i)
+                openAndCopyFile = True
+                With sht
+                    lrow = .[A65536].End(xlUp).Row
+                    For k = 1 To lrow
+                        If IsNumeric(.Cells(k, 1)) Then
+                            tlrow = retSht.[A65536].End(xlUp).Row + 1
+                            retSht.Cells(tlrow, 1) = tlrow - 3
+                            retSht.Cells(tlrow, 2) = .Cells(k, 2)
+                            retSht.Cells(tlrow, 3) = .Cells(k, 3)
+                            retSht.Cells(tlrow, 4) = .Cells(k, 4)
+                            retSht.Cells(tlrow, 5) = .Cells(k, 5)
+                            retSht.Cells(tlrow, 6) = .Cells(k, 6)
+                            retSht.Cells(tlrow, 7) = .Cells(k, 7)
+                            retSht.Cells(tlrow, 8) = .Cells(k, 10)
+                            retSht.Cells(tlrow, 9) = .Cells(k, 11)
+                        End If
+                    Next
+                End With
+                Set sht = Nothing
+            End If
+   Next
+    
+    wb.Close False
+    Set wb = Nothing
+    Set retSht = Nothing
+    Application.ScreenUpdating = True
+End Function
+
+
+
+
+
+
