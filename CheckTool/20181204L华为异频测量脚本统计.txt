@@ -1,0 +1,162 @@
+Dim brr(1 To 72, 1 To 2)
+
+Sub HWEutranfreqCheck()
+
+    If searchTxt Then Call formula
+    
+End Sub
+
+Sub formula()
+
+    Dim isAdd As Boolean, idDel As Boolean, isAddDel$
+    With [XFD1].End(xlToLeft)
+        .Resize(73, 2).Copy
+        .Offset(0, 1).PasteSpecial Paste:=xlPasteFormats, Operation:=xlNone '粘贴格式
+        Application.CutCopyMode = False  '取消复制产生的游动虚线
+        .Offset(1, 1).Resize(72, 2) = brr
+        
+        isAdd = False: isDel = False
+        For i = 1 To 36
+            If brr(i, 2) > 0 Then
+                isAdd = True
+                Exit For
+            End If
+        Next
+        
+        For i = 37 To 72
+            If brr(i, 2) > 0 Then
+                isDel = True
+                Exit For
+            End If
+        Next
+        
+        If isAdd And Not isDel Then
+            isAddDel = "(新增)"
+        ElseIf isDel And Not isAdd Then
+            isAddDel = "(删除)"
+        ElseIf isAdd And isDel Then
+            isAddDel = "(新增-删除)"
+        Else
+            isAddDel = "(数据异常)"
+        End If
+        
+        .Offset(0, 1).Value = Date & vbCrLf & isAddDel & vbCrLf & "(频点-小区数)"
+    End With
+    Erase brr
+    MsgBox "己完成统计"
+    If isAddDel = "(数据异常)" Then MsgBox "数据为空，有异常，请检查"
+
+End Sub
+
+
+Function searchTxt()
+'   ---------------遍历文件夹内所有文件-----------------------------
+    Erase brr
+    searchTxt = False
+   FileType = ".txt"  '查找文件类型
+   FilePartName = "svr"  '限定范围
+    '选择路径
+    Dim fd As FileDialog
+    Set fd = Application.FileDialog(msoFileDialogFolderPicker)
+    If fd.Show = -1 Then
+        sFolderPath = fd.SelectedItems(1)
+        Set fd = Nothing
+        searchTxt = True
+    Else
+        Set fd = Nothing
+        Exit Function
+    End If
+    
+    Dim file() As String, txtFile() As String
+    Dim i%, k%, t%, f$
+    i = 1:    k = 1:    t = 1
+    
+    ReDim file(1 To i)
+    file(1) = sFolderPath & "\"
+'    Debug.Print file(1)
+    
+    Do Until i > k
+        f = Dir(file(i), vbDirectory)
+            Do Until f = ""
+                If InStr(f, FileType) > 0 And InStr(f, FilePartName) > 0 Then
+                    ReDim Preserve txtFile(1 To t)
+                    txtFile(t) = file(i) & f
+                    Call handleTxt(f, txtFile(t))
+                    t = t + 1
+                ElseIf InStr(f, ".") = 0 Then '识别目录，文件夹命名不能有小数点
+                    k = k + 1
+                    ReDim Preserve file(1 To k)
+                    file(k) = file(i) & f & "\"
+                End If
+                f = Dir
+            Loop
+        i = i + 1
+    Loop
+
+
+End Function
+
+Sub handleTxt(f, path)
+
+    Dim fre$, arr, a
+    fre = "1650,38400,38544,38500,500,38350,37900,450,38098,38950"
+
+    Dim m%, svrNum%, addDel%
+    If InStr(path, "新增") > 0 Then
+        addDel = -3
+    ElseIf InStr(path, "删除") > 0 Then
+        addDel = 33
+    End If
+    svrNum = Int(Mid(Split(f, "-")(0), 4))
+    If svrNum < 7 Then
+        m = 4 * svrNum + addDel
+    ElseIf svrNum > 7 Then
+        m = 4 * (svrNum - 1) + addDel
+    End If
+    
+    
+    Open path For Input As #1
+    txtContent = StrConv(InputB(LOF(1), #1), vbUnicode)
+    Close #1
+    
+    Dim Reg As Object
+    Dim Matches As Object
+    Set Reg = CreateObject("Vbscript.Regexp")
+    arr = Split(fre, ",")
+    
+    For Each a In arr
+        With Reg
+            .Global = True
+            .IgnoreCase = True
+            .Pattern = "DlEarfcn=" & a
+            Set Matches = .Execute(txtContent)
+            If Matches.Count > 0 Then
+                If brr(m, 1) = a Then
+                    brr(m, 2) = brr(m, 2) + Matches.Count
+                ElseIf brr(m + 1, 1) = a Then
+                    brr(m + 1, 2) = brr(m + 1, 2) + Matches.Count
+                ElseIf brr(m + 2, 1) = a Then
+                    brr(m + 2, 2) = brr(m + 2, 2) + Matches.Count
+                ElseIf brr(m + 3, 1) = a Then
+                    brr(m + 3, 2) = brr(m + 3, 2) + Matches.Count
+                Else
+                    For j = m To m + 3
+                        If brr(j, 1) = "" Then
+                            brr(j, 1) = a
+                            brr(j, 2) = Matches.Count
+                            Exit For
+                        End If
+                    Next
+                End If
+            End If
+        End With
+    Next
+
+    
+    Set Reg = Nothing
+    Set Matches = Nothing
+
+End Sub
+
+
+
