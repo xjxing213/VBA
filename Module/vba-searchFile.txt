@@ -1,0 +1,68 @@
+N次修改了，此模块应该比较健壮吧，特点：
+
+1、可遍历目录下所有文件
+
+2、可筛选文件类型，可限定文件名关键词
+
+3、遍历目录（文件夹）允许存在小数点.
+
+4、一步到位，不用编写2次循环（即先遍历出目录，再遍历文件）
+
+Sub searchFile()
+'   ---------------遍历文件夹内所有文件-----------------------------
+   FileType = ".txt"  '查找文件类型
+   FileKeyword = "svr"  '进一步限定文件范围，当然也可以继续添加限定条件
+    '对话框方式选择路径
+    Dim fd As FileDialog
+    Set fd = Application.FileDialog(msoFileDialogFolderPicker)
+    If fd.Show = -1 Then
+        sFolderPath = fd.SelectedItems(1)
+        Set fd = Nothing
+    Else
+        Set fd = Nothing
+        Exit Sub
+    End If
+    
+    Dim file() As String, retFile() As String, fullPath$
+    Dim i%, k%, t%, f$
+    i = 1:    k = 1:    t = 1
+    
+    ReDim file(1 To i)
+    file(1) = sFolderPath & "\"
+    '相对而言i父目录，k为对应子目录
+    Do Until i > k
+        Debug.Print "file(" & i & ")=" & file(i)
+        f = Dir(file(i), vbDirectory)
+            Do Until f = ""
+                Debug.Print "f1=" & f
+                If InStr(f, FileType) > 0 And InStr(f, FileKeyword ) > 0 Then
+                    ReDim Preserve retFile(t)(1 To t)
+                    把遍历得到的文件存放到retFile(t)中
+                    retFile(t) = file(i) & f
+                    t = t + 1
+                ElseIf f <> "." And f <> ".." Then
+                    fullPath = file(i) & f & "\"
+                    If FileFolderExists(fullPath) Then
+                        k = k + 1
+                        ReDim Preserve file(1 To k)
+                        file(k) = fullPath
+                    End If
+                End If
+                f = Dir
+            Loop
+        i = i + 1
+    Loop
+ 
+ 
+End Sub
+ 
+ 
+ 
+Function FileFolderExists(strFullPath As String) As Boolean
+ 
+    Dim fso
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    If fso.folderExists(strFullPath) Then FileFolderExists = True
+    Set fso = Nothing
+ 
+End Function
